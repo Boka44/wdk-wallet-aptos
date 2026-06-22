@@ -1,0 +1,152 @@
+// Copyright 2024 Tether Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+'use strict'
+
+// eslint-disable-next-line camelcase
+import { sha3_256 } from '@noble/hashes/sha3'
+
+import Bcs from './bcs.js'
+
+/**
+ * The domain-separation prefix prepended to a serialized `RawTransaction`
+ * before signing: `sha3_256("APTOS::RawTransaction")`. Precomputed as a
+ * constant to avoid hashing the literal on every signature.
+ *
+ * @private
+ */
+const RAW_TRANSACTION_SALT = sha3_256(new TextEncoder().encode('APTOS::RawTransaction'))
+
+/**
+ * BCS variant index for the `EntryFunction` transaction payload.
+ *
+ * @private
+ */
+const PAYLOAD_ENTRY_FUNCTION = 2
+
+/**
+ * Serializes the BCS bytes of an `EntryFunction` transaction payload.
+ *
+ * @param {Object} entryFunction - The entry function.
+ * @param {string} entryFunction.module - The fully-qualified module address (e.g. "0x1").
+ * @param {string} entryFunction.moduleName - The module name (e.g. "aptos_account").
+ * @param {string} entryFunction.functionName - The function name (e.g. "transfer").
+ * @param {Uint8Array[]} entryFunction.typeArgs - The BCS-encoded type arguments.
+ * @param {Uint8Array[]} entryFunction.args - The BCS-encoded function arguments.
+ * @returns {Uint8Array} The serialized payload.
+ */
+export function encodeEntryFunctionPayload ({ module, moduleName, functionName, typeArgs, args }) {
+  const bcs = new Bcs()
+
+  bcs.uleb128(PAYLOAD_ENTRY_FUNCTION)
+  bcs.address(module)
+  bcs.string(moduleName)
+  bcs.string(functionName)
+
+  bcs.uleb128(typeArgs.length)
+  for (const typeArg of typeArgs) {
+    bcs.bytes(typeArg)
+  }
+
+  bcs.uleb128(args.length)
+  for (const arg of args) {
+    bcs.byteVector(arg)
+  }
+
+  return bcs.toBytes()
+}
+
+/**
+ * Encodes a `TypeTag::Struct` (variant index 7) for a struct with no nested
+ * type parameters (e.g. `0x1::fungible_asset::Metadata`).
+ *
+ * @param {string} module - The module address (e.g. "0x1").
+ * @param {string} moduleName - The module name.
+ * @param {string} structName - The struct name.
+ * @returns {Uint8Array} The serialized type tag.
+ */
+export function encodeStructTypeTag (module, moduleName, structName) {
+  const bcs = new Bcs()
+
+  bcs.uleb128(7)
+  bcs.address(module)
+  bcs.string(moduleName)
+  bcs.string(structName)
+  bcs.uleb128(0)
+
+  return bcs.toBytes()
+}
+
+/**
+ * Encodes an `address` function argument.
+ *
+ * @param {string} address - The hex address.
+ * @returns {Uint8Array} The serialized argument.
+ */
+export function encodeAddressArg (address) {
+  return new Bcs().address(address).toBytes()
+}
+
+/**
+ * Encodes a `u64` function argument.
+ *
+ * @param {number | bigint} value - The value.
+ * @returns {Uint8Array} The serialized argument.
+ */
+export function encodeU64Arg (value) {
+  return new Bcs().u64(value).toBytes()
+}
+
+/**
+ * Serializes the BCS bytes of a `RawTransaction`.
+ *
+ * @param {Object} raw - The raw transaction.
+ * @param {string} raw.sender - The sender's address.
+ * @param {number | bigint} raw.sequenceNumber - The sender's sequence number.
+ * @param {Uint8Array} raw.payload - The BCS-encoded transaction payload.
+ * @param {number | bigint} raw.maxGasAmount - The maximum gas units.
+ * @param {number | bigint} raw.gasUnitPrice - The gas unit price (in octas).
+ * @param {number | bigint} raw.expirationTimestampSecs - The expiration timestamp (in seconds).
+ * @param {number} raw.chainId - The chain id.
+ * @returns {Uint8Array} The serialized raw transaction.
+ */
+export function encodeRawTransaction ({ sender, sequenceNumber, payload, maxGasAmount, gasUnitPrice, expirationTimestampSecs, chainId }) {
+  const bcs = new Bcs()
+
+  bcs.address(sender)
+  bcs.u64(sequenceNumber)
+  bcs.bytes(payload)
+  bcs.u64(maxGasAmount)
+  bcs.u64(gasUnitPrice)
+  bcs.u64(expirationTimestampSecs)
+  bcs.u8(chainId)
+
+  return bcs.toBytes()
+}
+
+/**
+ * Builds the signing message for a serialized raw transaction by prefixing it
+ * with the Aptos `RawTransaction` domain-separation salt.
+ *
+ * @param {Uint8Array} rawTransactionBytes - The serialized raw transaction.
+ * @returns {Uint8Array} The signing message.
+ */
+export function buildSigningMessage (rawTransactionBytes) {
+  const message = new Uint8Array(RAW_TRANSACTION_SALT.length + rawTransactionBytes.length)
+
+  message.set(RAW_TRANSACTION_SALT, 0)
+  message.set(rawTransactionBytes, RAW_TRANSACTION_SALT.length)
+
+  return message
+}
