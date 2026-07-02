@@ -10,6 +10,26 @@
  * @property {string} ledger_timestamp - The current ledger timestamp (microseconds).
  */
 /**
+ * The result of a transaction simulation.
+ *
+ * @typedef {Object} AptosSimulationResult
+ * @property {boolean} success - Whether the simulated execution succeeded.
+ * @property {string} vm_status - The VM status message.
+ * @property {string} gas_used - The gas units consumed.
+ * @property {string} gas_unit_price - The gas unit price (in octas).
+ */
+/**
+ * A transaction as returned by the fullnode REST API. `type` is
+ * "pending_transaction" while in the mempool and "user_transaction" once
+ * committed; `success` and `vm_status` are present only once committed.
+ *
+ * @typedef {Object} AptosTransaction
+ * @property {string} type - The transaction state.
+ * @property {string} hash - The transaction hash.
+ * @property {boolean} [success] - Whether execution succeeded (present once committed).
+ * @property {string} [vm_status] - The VM status message (present once committed).
+ */
+/**
  * A thin client over the Aptos fullnode REST API (`/v1`).
  *
  * Uses the global `fetch` rather than the Aptos SDK's HTTP client so the
@@ -69,9 +89,9 @@ export default class AptosRpc {
      * public key but does not verify the signature for simulations).
      *
      * @param {Object} signedTransaction - The signed transaction (JSON form).
-     * @returns {Promise<Object>} The simulation result.
+     * @returns {Promise<AptosSimulationResult>} The simulation result.
      */
-    simulateTransaction(signedTransaction: any): Promise<any>;
+    simulateTransaction(signedTransaction: any): Promise<AptosSimulationResult>;
     /**
      * Submits a signed transaction.
      *
@@ -85,9 +105,9 @@ export default class AptosRpc {
      * Returns a transaction by its hash, or null if it has not been committed yet.
      *
      * @param {string} hash - The transaction hash.
-     * @returns {Promise<Object | null>} The transaction, or null.
+     * @returns {Promise<AptosTransaction | null>} The transaction, or null.
      */
-    getTransactionByHash(hash: string): Promise<any | null>;
+    getTransactionByHash(hash: string): Promise<AptosTransaction | null>;
 }
 export type AptosAccountData = {
     /**
@@ -112,4 +132,48 @@ export type AptosLedgerInfo = {
      * - The current ledger timestamp (microseconds).
      */
     ledger_timestamp: string;
+};
+/**
+ * The result of a transaction simulation.
+ */
+export type AptosSimulationResult = {
+    /**
+     * - Whether the simulated execution succeeded.
+     */
+    success: boolean;
+    /**
+     * - The VM status message.
+     */
+    vm_status: string;
+    /**
+     * - The gas units consumed.
+     */
+    gas_used: string;
+    /**
+     * - The gas unit price (in octas).
+     */
+    gas_unit_price: string;
+};
+/**
+ * A transaction as returned by the fullnode REST API. `type` is
+ * "pending_transaction" while in the mempool and "user_transaction" once
+ * committed; `success` and `vm_status` are present only once committed.
+ */
+export type AptosTransaction = {
+    /**
+     * - The transaction state.
+     */
+    type: string;
+    /**
+     * - The transaction hash.
+     */
+    hash: string;
+    /**
+     * - Whether execution succeeded (present once committed).
+     */
+    success?: boolean;
+    /**
+     * - The VM status message (present once committed).
+     */
+    vm_status?: string;
 };

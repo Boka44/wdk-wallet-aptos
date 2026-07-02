@@ -33,6 +33,8 @@ import {
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 
+/** @typedef {import('./aptos-rpc.js').AptosSimulationResult} AptosSimulationResult */
+
 /**
  * @typedef {Object} AptosWalletConfig
  * @property {string | string[]} [provider] - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover.
@@ -431,7 +433,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    *
    * @protected
    * @param {EntryFunctionPayload} payload - The payload descriptor.
-   * @returns {Promise<Object>} The simulation result.
+   * @returns {Promise<AptosSimulationResult>} The simulation result.
    * @throws {Error} If the simulation reports a failed execution (`success: false`).
    */
   async _simulate (payload) {

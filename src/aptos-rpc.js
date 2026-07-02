@@ -30,6 +30,28 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  */
 
 /**
+ * The result of a transaction simulation.
+ *
+ * @typedef {Object} AptosSimulationResult
+ * @property {boolean} success - Whether the simulated execution succeeded.
+ * @property {string} vm_status - The VM status message.
+ * @property {string} gas_used - The gas units consumed.
+ * @property {string} gas_unit_price - The gas unit price (in octas).
+ */
+
+/**
+ * A transaction as returned by the fullnode REST API. `type` is
+ * "pending_transaction" while in the mempool and "user_transaction" once
+ * committed; `success` and `vm_status` are present only once committed.
+ *
+ * @typedef {Object} AptosTransaction
+ * @property {string} type - The transaction state.
+ * @property {string} hash - The transaction hash.
+ * @property {boolean} [success] - Whether execution succeeded (present once committed).
+ * @property {string} [vm_status] - The VM status message (present once committed).
+ */
+
+/**
  * A thin client over the Aptos fullnode REST API (`/v1`).
  *
  * Uses the global `fetch` rather than the Aptos SDK's HTTP client so the
@@ -131,7 +153,7 @@ export default class AptosRpc {
    * public key but does not verify the signature for simulations).
    *
    * @param {Object} signedTransaction - The signed transaction (JSON form).
-   * @returns {Promise<Object>} The simulation result.
+   * @returns {Promise<AptosSimulationResult>} The simulation result.
    */
   async simulateTransaction (signedTransaction) {
     const [result] = await this._client.post('/transactions/simulate', signedTransaction)
@@ -153,7 +175,7 @@ export default class AptosRpc {
    * Returns a transaction by its hash, or null if it has not been committed yet.
    *
    * @param {string} hash - The transaction hash.
-   * @returns {Promise<Object | null>} The transaction, or null.
+   * @returns {Promise<AptosTransaction | null>} The transaction, or null.
    */
   async getTransactionByHash (hash) {
     return this._client.get(`/transactions/by_hash/${hash}`, { allow404: true })

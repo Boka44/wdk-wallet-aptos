@@ -188,14 +188,15 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly im
      *
      * @protected
      * @param {EntryFunctionPayload} payload - The payload descriptor.
-     * @returns {Promise<Object>} The simulation result.
+     * @returns {Promise<AptosSimulationResult>} The simulation result.
      * @throws {Error} If the simulation reports a failed execution (`success: false`).
      */
-    protected _simulate(payload: EntryFunctionPayload): Promise<any>;
+    protected _simulate(payload: EntryFunctionPayload): Promise<AptosSimulationResult>;
 }
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type AptosSimulationResult = import("./aptos-rpc.js").AptosSimulationResult;
 export type AptosWalletConfig = {
     /**
      * - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover.
