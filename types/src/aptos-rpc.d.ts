@@ -30,6 +30,27 @@
  * @property {string} [vm_status] - The VM status message (present once committed).
  */
 /**
+ * @typedef {Object} AptosRpcOptions
+ * @property {number} [retries] - The number of failover retry attempts when the provider is a list of urls (default: 3).
+ */
+/**
+ * @typedef {Object} AptosGetOptions
+ * @property {boolean} [allow404] - When true, a 404 response resolves to null instead of throwing.
+ * @property {boolean} [raw] - When true, the unparsed response text is returned instead of parsed JSON (required for bare-integer endpoints such as balances).
+ */
+/**
+ * A signed transaction in the JSON form accepted by the Aptos REST API.
+ *
+ * @typedef {Object} SignedTransaction
+ * @property {string} sender - The sender's address.
+ * @property {string} sequence_number - The sender's sequence number.
+ * @property {string} max_gas_amount - The maximum gas units.
+ * @property {string} gas_unit_price - The gas unit price (in octas).
+ * @property {string} expiration_timestamp_secs - The expiration timestamp (in seconds).
+ * @property {Object} payload - The transaction payload.
+ * @property {Object} signature - The signature.
+ */
+/**
  * A thin client over the Aptos fullnode REST API (`/v1`).
  *
  * Uses the global `fetch` rather than the Aptos SDK's HTTP client so the
@@ -41,12 +62,9 @@ export default class AptosRpc {
      * Creates a new Aptos REST client.
      *
      * @param {string | string[]} provider - The fullnode REST URL (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover across multiple urls.
-     * @param {Object} [options] - The options.
-     * @param {number} [options.retries] - The number of failover retry attempts (default: 3).
+     * @param {AptosRpcOptions} [options] - The options.
      */
-    constructor(provider: string | string[], { retries }?: {
-        retries?: number;
-    });
+    constructor(provider: string | string[], { retries }?: AptosRpcOptions);
     /** @private */
     private _client;
     /**
@@ -88,17 +106,17 @@ export default class AptosRpc {
      * must be a zero signature (the VM derives the authentication key from the
      * public key but does not verify the signature for simulations).
      *
-     * @param {Object} signedTransaction - The signed transaction (JSON form).
+     * @param {SignedTransaction} signedTransaction - The signed transaction (JSON form).
      * @returns {Promise<AptosSimulationResult>} The simulation result.
      */
-    simulateTransaction(signedTransaction: any): Promise<AptosSimulationResult>;
+    simulateTransaction(signedTransaction: SignedTransaction): Promise<AptosSimulationResult>;
     /**
      * Submits a signed transaction.
      *
-     * @param {Object} signedTransaction - The signed transaction (JSON form).
+     * @param {SignedTransaction} signedTransaction - The signed transaction (JSON form).
      * @returns {Promise<{ hash: string }>} The pending transaction.
      */
-    submitTransaction(signedTransaction: any): Promise<{
+    submitTransaction(signedTransaction: SignedTransaction): Promise<{
         hash: string;
     }>;
     /**
@@ -176,4 +194,53 @@ export type AptosTransaction = {
      * - The VM status message (present once committed).
      */
     vm_status?: string;
+};
+export type AptosRpcOptions = {
+    /**
+     * - The number of failover retry attempts when the provider is a list of urls (default: 3).
+     */
+    retries?: number;
+};
+export type AptosGetOptions = {
+    /**
+     * - When true, a 404 response resolves to null instead of throwing.
+     */
+    allow404?: boolean;
+    /**
+     * - When true, the unparsed response text is returned instead of parsed JSON (required for bare-integer endpoints such as balances).
+     */
+    raw?: boolean;
+};
+/**
+ * A signed transaction in the JSON form accepted by the Aptos REST API.
+ */
+export type SignedTransaction = {
+    /**
+     * - The sender's address.
+     */
+    sender: string;
+    /**
+     * - The sender's sequence number.
+     */
+    sequence_number: string;
+    /**
+     * - The maximum gas units.
+     */
+    max_gas_amount: string;
+    /**
+     * - The gas unit price (in octas).
+     */
+    gas_unit_price: string;
+    /**
+     * - The expiration timestamp (in seconds).
+     */
+    expiration_timestamp_secs: string;
+    /**
+     * - The transaction payload.
+     */
+    payload: any;
+    /**
+     * - The signature.
+     */
+    signature: any;
 };

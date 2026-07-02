@@ -20,6 +20,26 @@ import { sha3_256 } from '@noble/hashes/sha3'
 import Bcs from './bcs.js'
 
 /**
+ * @typedef {Object} EntryFunctionInput
+ * @property {string} module - The fully-qualified module address (e.g. "0x1").
+ * @property {string} moduleName - The module name (e.g. "aptos_account").
+ * @property {string} functionName - The function name (e.g. "transfer").
+ * @property {Uint8Array[]} typeArgs - The BCS-encoded type arguments.
+ * @property {Uint8Array[]} args - The BCS-encoded function arguments.
+ */
+
+/**
+ * @typedef {Object} RawTransactionInput
+ * @property {string} sender - The sender's address.
+ * @property {number | bigint} sequenceNumber - The sender's sequence number.
+ * @property {Uint8Array} payload - The BCS-encoded transaction payload.
+ * @property {number | bigint} maxGasAmount - The maximum gas units.
+ * @property {number | bigint} gasUnitPrice - The gas unit price (in octas).
+ * @property {number | bigint} expirationTimestampSecs - The expiration timestamp (in seconds).
+ * @property {number} chainId - The chain id.
+ */
+
+/**
  * The domain-separation prefix prepended to a serialized `RawTransaction`
  * before signing: `sha3_256("APTOS::RawTransaction")`. Precomputed as a
  * constant to avoid hashing the literal on every signature.
@@ -38,12 +58,7 @@ const PAYLOAD_ENTRY_FUNCTION = 2
 /**
  * Serializes the BCS bytes of an `EntryFunction` transaction payload.
  *
- * @param {Object} entryFunction - The entry function.
- * @param {string} entryFunction.module - The fully-qualified module address (e.g. "0x1").
- * @param {string} entryFunction.moduleName - The module name (e.g. "aptos_account").
- * @param {string} entryFunction.functionName - The function name (e.g. "transfer").
- * @param {Uint8Array[]} entryFunction.typeArgs - The BCS-encoded type arguments.
- * @param {Uint8Array[]} entryFunction.args - The BCS-encoded function arguments.
+ * @param {EntryFunctionInput} entryFunction - The entry function.
  * @returns {Uint8Array} The serialized payload.
  */
 export function encodeEntryFunctionPayload ({ module, moduleName, functionName, typeArgs, args }) {
@@ -111,14 +126,7 @@ export function encodeU64Arg (value) {
 /**
  * Serializes the BCS bytes of a `RawTransaction`.
  *
- * @param {Object} raw - The raw transaction.
- * @param {string} raw.sender - The sender's address.
- * @param {number | bigint} raw.sequenceNumber - The sender's sequence number.
- * @param {Uint8Array} raw.payload - The BCS-encoded transaction payload.
- * @param {number | bigint} raw.maxGasAmount - The maximum gas units.
- * @param {number | bigint} raw.gasUnitPrice - The gas unit price (in octas).
- * @param {number | bigint} raw.expirationTimestampSecs - The expiration timestamp (in seconds).
- * @param {number} raw.chainId - The chain id.
+ * @param {RawTransactionInput} raw - The raw transaction.
  * @returns {Uint8Array} The serialized raw transaction.
  */
 export function encodeRawTransaction ({ sender, sequenceNumber, payload, maxGasAmount, gasUnitPrice, expirationTimestampSecs, chainId }) {

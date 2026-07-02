@@ -52,6 +52,30 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  */
 
 /**
+ * @typedef {Object} AptosRpcOptions
+ * @property {number} [retries] - The number of failover retry attempts when the provider is a list of urls (default: 3).
+ */
+
+/**
+ * @typedef {Object} AptosGetOptions
+ * @property {boolean} [allow404] - When true, a 404 response resolves to null instead of throwing.
+ * @property {boolean} [raw] - When true, the unparsed response text is returned instead of parsed JSON (required for bare-integer endpoints such as balances).
+ */
+
+/**
+ * A signed transaction in the JSON form accepted by the Aptos REST API.
+ *
+ * @typedef {Object} SignedTransaction
+ * @property {string} sender - The sender's address.
+ * @property {string} sequence_number - The sender's sequence number.
+ * @property {string} max_gas_amount - The maximum gas units.
+ * @property {string} gas_unit_price - The gas unit price (in octas).
+ * @property {string} expiration_timestamp_secs - The expiration timestamp (in seconds).
+ * @property {Object} payload - The transaction payload.
+ * @property {Object} signature - The signature.
+ */
+
+/**
  * A thin client over the Aptos fullnode REST API (`/v1`).
  *
  * Uses the global `fetch` rather than the Aptos SDK's HTTP client so the
@@ -63,8 +87,7 @@ export default class AptosRpc {
    * Creates a new Aptos REST client.
    *
    * @param {string | string[]} provider - The fullnode REST URL (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover across multiple urls.
-   * @param {Object} [options] - The options.
-   * @param {number} [options.retries] - The number of failover retry attempts (default: 3).
+   * @param {AptosRpcOptions} [options] - The options.
    */
   constructor (provider, { retries = 3 } = {}) {
     if (Array.isArray(provider)) {
@@ -152,7 +175,7 @@ export default class AptosRpc {
    * must be a zero signature (the VM derives the authentication key from the
    * public key but does not verify the signature for simulations).
    *
-   * @param {Object} signedTransaction - The signed transaction (JSON form).
+   * @param {SignedTransaction} signedTransaction - The signed transaction (JSON form).
    * @returns {Promise<AptosSimulationResult>} The simulation result.
    */
   async simulateTransaction (signedTransaction) {
@@ -164,7 +187,7 @@ export default class AptosRpc {
   /**
    * Submits a signed transaction.
    *
-   * @param {Object} signedTransaction - The signed transaction (JSON form).
+   * @param {SignedTransaction} signedTransaction - The signed transaction (JSON form).
    * @returns {Promise<{ hash: string }>} The pending transaction.
    */
   async submitTransaction (signedTransaction) {
@@ -198,9 +221,7 @@ class SingleAptosRpc {
    * Performs a GET request against the endpoint.
    *
    * @param {string} path - The path appended to the base url.
-   * @param {Object} [options] - The options.
-   * @param {boolean} [options.allow404] - When true, a 404 response resolves to null instead of throwing.
-   * @param {boolean} [options.raw] - When true, the unparsed response text is returned instead of parsed JSON (required for bare-integer endpoints such as balances).
+   * @param {AptosGetOptions} [options] - The options.
    * @returns {Promise<unknown>} The parsed response, or null on a tolerated 404.
    */
   async get (path, { allow404 = false, raw = false } = {}) {
