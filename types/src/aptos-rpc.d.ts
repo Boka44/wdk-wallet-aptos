@@ -4,6 +4,12 @@
  * @property {string} authentication_key - The account's authentication key.
  */
 /**
+ * @typedef {Object} AptosLedgerInfo
+ * @property {string} chain_id - The chain id.
+ * @property {string} ledger_version - The current ledger version.
+ * @property {string} ledger_timestamp - The current ledger timestamp (microseconds).
+ */
+/**
  * A thin client over the Aptos fullnode REST API (`/v1`).
  *
  * Uses the global `fetch` rather than the Aptos SDK's HTTP client so the
@@ -26,9 +32,9 @@ export default class AptosRpc {
     /**
      * Returns the ledger info (chain id, ledger version, etc.).
      *
-     * @returns {Promise<Object>} The ledger info.
+     * @returns {Promise<AptosLedgerInfo>} The ledger info.
      */
-    getLedgerInfo(): Promise<any>;
+    getLedgerInfo(): Promise<AptosLedgerInfo>;
     /**
      * Returns the on-chain data for an account, or null if the account has not
      * been created yet.
@@ -92,4 +98,18 @@ export type AptosAccountData = {
      * - The account's authentication key.
      */
     authentication_key: string;
+};
+export type AptosLedgerInfo = {
+    /**
+     * - The chain id.
+     */
+    chain_id: string;
+    /**
+     * - The current ledger version.
+     */
+    ledger_version: string;
+    /**
+     * - The current ledger timestamp (microseconds).
+     */
+    ledger_timestamp: string;
 };

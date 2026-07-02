@@ -14,7 +14,7 @@ export default class WalletManagerAptos extends WalletManager {
      */
     protected _rpc: AptosRpc | undefined;
     /**
-     * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
+     * Returns the wallet account at a specific index (derived per [SLIP-0010](https://github.com/satoshilabs/slips/blob/master/slip-0010.md)).
      *
      * @example
      * // Returns the account with derivation path m/44'/637'/index'/0'/0'

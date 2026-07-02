@@ -15,8 +15,6 @@
 'use strict'
 
 import { ed25519 } from '@noble/curves/ed25519'
-// eslint-disable-next-line camelcase
-import { sha3_256 } from '@noble/hashes/sha3'
 import { bytesToHex } from '@noble/hashes/utils'
 
 import HDKey from 'micro-key-producer/slip10.js'
@@ -26,7 +24,7 @@ import * as bip39 from 'bip39'
 // eslint-disable-next-line camelcase
 import { sodium_memzero } from 'sodium-universal'
 
-import WalletAccountReadOnlyAptos, { normalizeAddress } from './wallet-account-read-only-aptos.js'
+import WalletAccountReadOnlyAptos, { deriveAddress } from './wallet-account-read-only-aptos.js'
 import { encodeRawTransaction, buildSigningMessage } from './transaction.js'
 
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
@@ -39,38 +37,36 @@ import { encodeRawTransaction, buildSigningMessage } from './transaction.js'
 /** @typedef {import('./wallet-account-read-only-aptos.js').EntryFunctionPayload} EntryFunctionPayload */
 
 /**
- * The [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)
- * coin-type prefix for Aptos (see SLIP-0044). All path segments must be
- * hardened: SLIP-0010 Ed25519 derivation does not support non-hardened
- * children.
- *
- * @private
+ * @typedef {Object} TransactionGasParams
+ * @property {bigint} maxGasAmount - The maximum gas units.
+ * @property {bigint} gasUnitPrice - The gas unit price (in octas).
  */
-const BIP_44_APTOS_DERIVATION_PATH_PREFIX = "m/44'/637'"
 
 /**
- * The single-signer Ed25519 authentication scheme identifier, appended to the
- * public key before hashing to derive the authentication key.
+ * A signed transaction in the JSON form accepted by the Aptos REST API.
  *
- * @private
+ * @typedef {Object} SignedTransaction
+ * @property {string} sender - The sender's address.
+ * @property {string} sequence_number - The sender's sequence number.
+ * @property {string} max_gas_amount - The maximum gas units.
+ * @property {string} gas_unit_price - The gas unit price (in octas).
+ * @property {string} expiration_timestamp_secs - The expiration timestamp (in seconds).
+ * @property {EntryFunctionPayload & { type: string }} payload - The entry function payload.
+ * @property {{ type: string, public_key: string, signature: string }} signature - The Ed25519 signature.
  */
-const ED25519_SCHEME = 0x00
 
-/**
- * The buffer multiplier applied to a simulated `gas_used` to set the
- * transaction's `max_gas_amount`, accommodating minor on-chain state changes
- * between simulation and submission.
- *
- * @private
- */
+// The SLIP-0044 coin-type prefix for Aptos. All path segments must be
+// hardened: SLIP-0010 ed25519 derivation does not support non-hardened
+// children.
+const APTOS_DERIVATION_PATH_PREFIX = "m/44'/637'"
+
+// The buffer multiplier applied to a simulated `gas_used` to set the
+// transaction's `max_gas_amount`, accommodating minor on-chain state changes
+// between simulation and submission.
 const MAX_GAS_BUFFER = 2n
 
-/**
- * The fallback `max_gas_amount` used when a simulation reports zero gas usage
- * (e.g. for an account that cannot cover the fee).
- *
- * @private
- */
+// The fallback `max_gas_amount` used when a simulation reports zero gas usage
+// (e.g. for an account that cannot cover the fee).
 const DEFAULT_MAX_GAS_AMOUNT = 100000n
 
 /**
@@ -80,7 +76,6 @@ const DEFAULT_MAX_GAS_AMOUNT = 100000n
  *
  * @param {string} path - The derivation path.
  * @throws {Error} If the path does not have exactly three hardened, leading-zero-free index segments.
- * @private
  */
 function assertFullHardenedPath (path) {
   const segments = path.split('/')
@@ -104,7 +99,6 @@ function assertFullHardenedPath (path) {
  * Zeroes a key-material buffer in place, if present.
  *
  * @param {Uint8Array} [bytes] - The buffer to wipe.
- * @private
  */
 function wipe (bytes) {
   if (bytes) {
@@ -119,34 +113,39 @@ function wipe (bytes) {
  */
 export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
   /**
-   * @private
-   * Use {@link WalletAccountAptos.at} instead.
+   * Creates a new aptos wallet account.
+   *
+   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed (mnemonic phrase or raw seed bytes).
+   * @param {string} path - The derivation path (e.g. "0'/0'/0'").
+   * @param {AptosWalletConfig} [config] - The configuration object.
    */
   constructor (seed, path, config = {}) {
-    // Only a seed we derive from a mnemonic is ours to wipe; a caller-supplied
-    // Uint8Array seed is left untouched (it may be reused elsewhere).
+    // Work on our own copy of the seed so we can wipe it freely without
+    // touching the caller's buffer: mutating a caller-supplied Uint8Array
+    // could cause unexpected behavior on their side.
     let ownedSeed
     if (typeof seed === 'string') {
       if (!bip39.validateMnemonic(seed)) {
         throw new Error('The seed phrase is invalid.')
       }
 
-      seed = bip39.mnemonicToSeedSync(seed)
-      ownedSeed = seed
+      ownedSeed = bip39.mnemonicToSeedSync(seed)
+    } else {
+      ownedSeed = Uint8Array.from(seed)
     }
 
     assertFullHardenedPath(path)
 
-    const fullPath = `${BIP_44_APTOS_DERIVATION_PATH_PREFIX}/${path}`
+    const fullPath = `${APTOS_DERIVATION_PATH_PREFIX}/${path}`
 
-    const hdKey = HDKey.fromMasterSeed(seed)
+    const hdKey = HDKey.fromMasterSeed(ownedSeed)
     const { privateKey } = hdKey.derive(fullPath, true)
     const publicKey = ed25519.getPublicKey(privateKey)
     const address = deriveAddress(publicKey)
 
     // Scrub the intermediate key material: the master node's private key and
-    // chain code, and the mnemonic-derived seed if we created it. The retained
-    // account key (`privateKey`) is a distinct buffer, wiped on dispose().
+    // chain code, and our copy of the seed. The retained account key
+    // (`privateKey`) is a distinct buffer, wiped on dispose().
     wipe(hdKey.privateKey)
     wipe(hdKey.chainCode)
     wipe(ownedSeed)
@@ -171,18 +170,6 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
      * @type {Uint8Array | undefined}
      */
     this._privateKey = privateKey
-  }
-
-  /**
-   * Creates a new aptos wallet account.
-   *
-   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed.
-   * @param {string} path - The BIP-44 derivation path (e.g. "0'/0'/0'").
-   * @param {AptosWalletConfig} [config] - The configuration object.
-   * @returns {Promise<WalletAccountAptos>} The wallet account.
-   */
-  static async at (seed, path, config = {}) {
-    return new WalletAccountAptos(seed, path, config)
   }
 
   /**
@@ -239,7 +226,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * for tokens.
    *
    * @param {AptosTransaction} tx - The native APT transaction to sign.
-   * @returns {Promise<Object>} The signed transaction (JSON form, ready to submit).
+   * @returns {Promise<SignedTransaction>} The signed transaction (JSON form, ready to submit).
    */
   async signTransaction (tx) {
     if (!this._privateKey) {
@@ -321,10 +308,8 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
-   * @param {Object} gas - The gas parameters.
-   * @param {bigint} gas.maxGasAmount - The maximum gas units.
-   * @param {bigint} gas.gasUnitPrice - The gas unit price (in octas).
-   * @returns {Promise<Object>} The signed transaction (JSON form).
+   * @param {TransactionGasParams} gas - The gas parameters.
+   * @returns {Promise<SignedTransaction>} The signed transaction (JSON form).
    */
   async _signPayload (payload, { maxGasAmount, gasUnitPrice }) {
     const sender = await this.getAddress()
@@ -370,7 +355,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
    * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
-   * @returns {Promise<{ signedTransaction: Object, fee: bigint }>} The signed transaction and its estimated fee.
+   * @returns {Promise<{ signedTransaction: SignedTransaction, fee: bigint }>} The signed transaction and its estimated fee.
    */
   async _buildSignedTransaction (payload, maxFee) {
     const simulation = await this._simulate(payload)
@@ -403,21 +388,4 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
 
     return { hash, fee }
   }
-}
-
-/**
- * Derives an Aptos account address from an Ed25519 public key:
- * `sha3_256(publicKey ‖ 0x00)`, hex-encoded.
- *
- * @param {Uint8Array} publicKey - The 32-byte Ed25519 public key.
- * @returns {string} The account address.
- * @private
- */
-function deriveAddress (publicKey) {
-  const input = new Uint8Array(publicKey.length + 1)
-
-  input.set(publicKey, 0)
-  input[publicKey.length] = ED25519_SCHEME
-
-  return normalizeAddress(bytesToHex(sha3_256(input)))
 }

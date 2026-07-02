@@ -24,7 +24,7 @@ describe('WalletAccountAptos', () => {
 
   beforeEach(async () => {
     globalThis.fetch = jest.fn()
-    account = await WalletAccountAptos.at(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1 })
+    account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1 })
   })
 
   afterEach(() => {
@@ -41,27 +41,27 @@ describe('WalletAccountAptos', () => {
       expect(bytesToHex(privateKey)).toBe(PRIVATE_KEY)
     })
 
-    it('throws on a non-hardened path', async () => {
-      await expect(WalletAccountAptos.at(SEED_PHRASE, "0'/0/0")).rejects.toThrow('hardened')
+    it('throws on a non-hardened path', () => {
+      expect(() => new WalletAccountAptos(SEED_PHRASE, "0'/0/0")).toThrow('hardened')
     })
 
-    it('rejects paths that are not exactly three hardened segments', async () => {
+    it('rejects paths that are not exactly three hardened segments', () => {
       for (const p of ["0'", "0'/0'", "0'/0'/0'/0'", "0'/0'/0'/0'/0'"]) {
-        await expect(WalletAccountAptos.at(SEED_PHRASE, p)).rejects.toThrow('exactly three hardened segments')
+        expect(() => new WalletAccountAptos(SEED_PHRASE, p)).toThrow('exactly three hardened segments')
       }
     })
 
-    it('rejects a non-numeric path segment', async () => {
-      await expect(WalletAccountAptos.at(SEED_PHRASE, "0'/x'/0'")).rejects.toThrow('hardened index')
+    it('rejects a non-numeric path segment', () => {
+      expect(() => new WalletAccountAptos(SEED_PHRASE, "0'/x'/0'")).toThrow('hardened index')
     })
 
-    it('rejects leading-zero index segments that would alias another path', async () => {
-      await expect(WalletAccountAptos.at(SEED_PHRASE, "00'/0'/0'")).rejects.toThrow('leading zeros')
-      await expect(WalletAccountAptos.at(SEED_PHRASE, "0'/01'/0'")).rejects.toThrow('leading zeros')
+    it('rejects leading-zero index segments that would alias another path', () => {
+      expect(() => new WalletAccountAptos(SEED_PHRASE, "00'/0'/0'")).toThrow('leading zeros')
+      expect(() => new WalletAccountAptos(SEED_PHRASE, "0'/01'/0'")).toThrow('leading zeros')
     })
 
-    it('throws on an invalid seed phrase', async () => {
-      await expect(WalletAccountAptos.at('not valid', "0'/0'/0'")).rejects.toThrow('invalid')
+    it('throws on an invalid seed phrase', () => {
+      expect(() => new WalletAccountAptos('not valid', "0'/0'/0'")).toThrow('invalid')
     })
 
     it('does not mutate a caller-supplied Uint8Array seed', async () => {
@@ -69,7 +69,7 @@ describe('WalletAccountAptos', () => {
       const seed = bip39.mnemonicToSeedSync(SEED_PHRASE)
       const copy = seed.slice()
 
-      await WalletAccountAptos.at(seed, "0'/0'/0'")
+      new WalletAccountAptos(seed, "0'/0'/0'") // eslint-disable-line no-new
 
       expect(seed).toEqual(copy)
     })
@@ -155,7 +155,7 @@ describe('WalletAccountAptos', () => {
     }
 
     it('enforces transferMaxFee', async () => {
-      account = await WalletAccountAptos.at(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transferMaxFee: 10n })
+      account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transferMaxFee: 10n })
       mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' }) // fee = 10000
 
       await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
@@ -237,7 +237,7 @@ describe('WalletAccountAptos', () => {
     })
 
     it('rejects an out-of-range configured chain id rather than truncating it', async () => {
-      const bad = await WalletAccountAptos.at(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 256 })
+      const bad = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 256 })
       mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' })
 
       await expect(bad.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))

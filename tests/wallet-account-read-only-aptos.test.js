@@ -110,7 +110,7 @@ describe('WalletAccountReadOnlyAptos', () => {
     })
 
     it('verifies a signature produced by the matching full account', async () => {
-      const full = await WalletAccountAptos.at(SEED_PHRASE, "0'/0'/0'")
+      const full = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'")
       const signature = await full.sign('hello world')
 
       const readOnly = new WalletAccountReadOnlyAptos(ADDRESS, { provider: RPC_URL }, hexToBytes(PUBLIC_KEY))
@@ -120,7 +120,7 @@ describe('WalletAccountReadOnlyAptos', () => {
     })
 
     it('verifies via the account returned by toReadOnlyAccount()', async () => {
-      const full = await WalletAccountAptos.at(SEED_PHRASE, "0'/0'/0'")
+      const full = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'")
       const signature = await full.sign('round trip')
       const readOnly = await full.toReadOnlyAccount()
 
@@ -128,7 +128,7 @@ describe('WalletAccountReadOnlyAptos', () => {
     })
 
     it('accepts a 0x-prefixed signature (the form signTransaction and the SDK emit)', async () => {
-      const full = await WalletAccountAptos.at(SEED_PHRASE, "0'/0'/0'")
+      const full = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'")
       const signature = await full.sign('prefixed')
       const readOnly = new WalletAccountReadOnlyAptos(ADDRESS, { provider: RPC_URL }, hexToBytes(PUBLIC_KEY))
 

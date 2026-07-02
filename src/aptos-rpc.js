@@ -23,6 +23,13 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  */
 
 /**
+ * @typedef {Object} AptosLedgerInfo
+ * @property {string} chain_id - The chain id.
+ * @property {string} ledger_version - The current ledger version.
+ * @property {string} ledger_timestamp - The current ledger timestamp (microseconds).
+ */
+
+/**
  * A thin client over the Aptos fullnode REST API (`/v1`).
  *
  * Uses the global `fetch` rather than the Aptos SDK's HTTP client so the
@@ -67,7 +74,7 @@ export default class AptosRpc {
   /**
    * Returns the ledger info (chain id, ledger version, etc.).
    *
-   * @returns {Promise<Object>} The ledger info.
+   * @returns {Promise<AptosLedgerInfo>} The ledger info.
    */
   async getLedgerInfo () {
     return this._client.get('')
@@ -171,6 +178,7 @@ class SingleAptosRpc {
    * @param {string} path - The path appended to the base url.
    * @param {Object} [options] - The options.
    * @param {boolean} [options.allow404] - When true, a 404 response resolves to null instead of throwing.
+   * @param {boolean} [options.raw] - When true, the unparsed response text is returned instead of parsed JSON (required for bare-integer endpoints such as balances).
    * @returns {Promise<unknown>} The parsed response, or null on a tolerated 404.
    */
   async get (path, { allow404 = false, raw = false } = {}) {
@@ -237,8 +245,9 @@ class SingleAptosRpc {
     }
 
     try {
-      return text ? JSON.parse(text) : null
+      return JSON.parse(text)
     } catch {
+      // An empty body (text === '') also lands here; fall back to the raw text.
       return text
     }
   }

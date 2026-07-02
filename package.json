@@ -1,11 +1,11 @@
 {
   "name": "@tetherto/wdk-wallet-aptos",
   "version": "1.0.0-beta.1",
-  "description": "A simple package to manage BIP-44 wallets for the aptos blockchain.",
+  "description": "A simple package to manage SLIP-0010 HD wallets for the aptos blockchain.",
   "keywords": [
     "wdk",
     "wallet",
-    "bip-44",
+    "slip-0010",
     "aptos"
   ],
   "author": "Tether",
@@ -26,6 +26,7 @@
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration"
   },
   "dependencies": {
+    "@mysten/bcs": "^2.1.0",
     "@noble/curves": "1.9.2",
     "@noble/hashes": "1.3.3",
     "@tetherto/wdk-failover-provider": "1.0.0-beta.2",

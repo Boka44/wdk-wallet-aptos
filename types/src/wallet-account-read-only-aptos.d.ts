@@ -1,10 +1,4 @@
 /**
- * @typedef {Object} EntryFunctionPayload
- * @property {string} function - The fully-qualified entry function (e.g. "0x1::aptos_account::transfer").
- * @property {string[]} type_arguments - The type arguments.
- * @property {Array<string>} arguments - The function arguments (addresses as hex, u64 amounts as decimal strings).
- */
-/**
  * Normalizes an Aptos address to canonical 0x-prefixed 64-hex form, validating
  * that it is non-empty hexadecimal and fits in 32 bytes.
  *
@@ -13,6 +7,14 @@
  * @throws {Error} If the address is not a valid hex string or exceeds 32 bytes.
  */
 export function normalizeAddress(address: string): string;
+/**
+ * Derives an Aptos account address from an Ed25519 public key:
+ * `sha3_256(publicKey ‖ 0x00)`, hex-encoded.
+ *
+ * @param {Uint8Array} publicKey - The 32-byte Ed25519 public key.
+ * @returns {string} The account address.
+ */
+export function deriveAddress(publicKey: Uint8Array): string;
 /**
  * Validates a token amount and returns it as a decimal string. Amounts must be
  * non-negative integers within the u64 range (Aptos amounts are u64).
@@ -75,6 +77,29 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly im
      * @type {number | undefined}
      */
     private _chainId;
+    /**
+     * The transaction expiration window, in seconds. Resolved once here rather
+     * than recomputed on every transaction.
+     *
+     * @private
+     * @type {number}
+     */
+    private _txnExpirationSecs;
+    /**
+     * Returns a transaction's receipt.
+     *
+     * The result distinguishes three states, so a caller polling for
+     * confirmation must inspect it rather than only checking for non-null:
+     * - `null` — the hash is unknown to the node (not yet propagated, or invalid).
+     * - an object with `type: "pending_transaction"` — accepted into the mempool
+     *   but not yet committed; it has no `success` or `vm_status` field.
+     * - an object with `type: "user_transaction"` and a `success` boolean — committed;
+     *   `success` indicates whether it executed successfully and `vm_status` carries the reason.
+     *
+     * @param {string} hash - The transaction's hash.
+     * @returns {Promise<AptosTransactionReceipt | null>} The receipt, or null if the transaction is unknown to the node.
+     */
+    getTransactionReceipt(hash: string): Promise<AptosTransactionReceipt | null>;
     /**
      * Describes a native APT transfer via `0x1::aptos_account::transfer`, which
      * auto-creates the recipient's account if it does not exist.
@@ -167,30 +192,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly im
      * @throws {Error} If the simulation reports a failed execution (`success: false`).
      */
     protected _simulate(payload: EntryFunctionPayload): Promise<any>;
-    /**
-     * Returns the account's public key (hex) for transaction simulation, or null
-     * when unknown. Simulation needs the public key to derive the authentication
-     * key; an account built from an address alone cannot be simulated.
-     *
-     * @protected
-     * @returns {string | null} The public key, or null.
-     */
-    protected _simulationPublicKey(): string | null;
 }
-export type EntryFunctionPayload = {
-    /**
-     * - The fully-qualified entry function (e.g. "0x1::aptos_account::transfer").
-     */
-    function: string;
-    /**
-     * - The type arguments.
-     */
-    type_arguments: string[];
-    /**
-     * - The function arguments (addresses as hex, u64 amounts as decimal strings).
-     */
-    arguments: Array<string>;
-};
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
@@ -225,6 +227,41 @@ export type AptosTransaction = {
      * - The amount of APT to send (in octas, 1 APT = 100,000,000 octas).
      */
     value: number | bigint;
+};
+export type EntryFunctionPayload = {
+    /**
+     * - The fully-qualified entry function (e.g. "0x1::aptos_account::transfer").
+     */
+    function: string;
+    /**
+     * - The type arguments.
+     */
+    type_arguments: string[];
+    /**
+     * - The function arguments (addresses as hex, u64 amounts as decimal strings).
+     */
+    arguments: Array<string>;
+};
+/**
+ * A committed or pending transaction as returned by the fullnode REST API.
+ */
+export type AptosTransactionReceipt = {
+    /**
+     * - The transaction state ("pending_transaction" or "user_transaction").
+     */
+    type: string;
+    /**
+     * - The transaction hash.
+     */
+    hash: string;
+    /**
+     * - Whether execution succeeded (present once committed).
+     */
+    success?: boolean;
+    /**
+     * - The VM status message (present once committed).
+     */
+    vm_status?: string;
 };
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';
 import AptosRpc from './aptos-rpc.js';

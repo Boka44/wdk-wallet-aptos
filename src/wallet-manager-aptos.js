@@ -24,13 +24,9 @@ import { toGasPrice } from './wallet-account-read-only-aptos.js'
 
 /** @typedef {import('./wallet-account-read-only-aptos.js').AptosWalletConfig} AptosWalletConfig */
 
-/**
- * The fee-rate multiplier (in basis points / 100) applied to the standard gas
- * estimate for the 'fast' tier, used as a fallback when the node does not
- * return a prioritized estimate.
- *
- * @private
- */
+// The fee-rate multiplier (in basis points / 100) applied to the standard gas
+// estimate for the 'fast' tier, used as a fallback when the node does not
+// return a prioritized estimate.
 const FEE_RATE_FAST_MULTIPLIER = 150n
 
 export default class WalletManagerAptos extends WalletManager {
@@ -59,13 +55,17 @@ export default class WalletManagerAptos extends WalletManager {
      */
     this._rpc = undefined
 
-    if (config.provider) {
-      this._rpc = new AptosRpc(config.provider, { retries: config.retries ?? 3 })
+    // An empty provider array is truthy but has no endpoints, so guard against
+    // it explicitly rather than constructing a failover with nothing to fail over to.
+    const provider = config.provider
+    const hasProvider = Array.isArray(provider) ? provider.length > 0 : Boolean(provider)
+    if (hasProvider) {
+      this._rpc = new AptosRpc(provider, { retries: config.retries ?? 3 })
     }
   }
 
   /**
-   * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
+   * Returns the wallet account at a specific index (derived per [SLIP-0010](https://github.com/satoshilabs/slips/blob/master/slip-0010.md)).
    *
    * @example
    * // Returns the account with derivation path m/44'/637'/index'/0'/0'

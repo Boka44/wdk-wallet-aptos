@@ -14,21 +14,27 @@
 
 'use strict'
 
+import { BcsWriter } from '@mysten/bcs'
+
+// Initial writer capacity in bytes; the writer grows automatically up to
+// MAX_SIZE. A RawTransaction with an EntryFunction payload is well under 1 KiB.
+const INITIAL_SIZE = 1024
+const MAX_SIZE = 1024 * 1024
+
 /**
- * Minimal Binary Canonical Serialization (BCS) writer.
+ * Binary Canonical Serialization (BCS) writer for building an Aptos
+ * `RawTransaction` carrying an `EntryFunction` payload.
  *
- * Implements only the subset required to build an Aptos `RawTransaction`
- * carrying an `EntryFunction` payload. The full BCS spec is large; the WDK
- * module needs exactly the primitives below, so a hand-rolled writer avoids
- * pulling the Aptos SDK (and its non-Bare-compatible HTTP client) into the
- * runtime dependency tree.
+ * Thin wrapper over `@mysten/bcs`'s `BcsWriter`, exposing only the primitives
+ * this module needs and keeping the input validation (u8/u64/address ranges)
+ * the transaction encoders rely on.
  *
  * @see https://github.com/diem/bcs
  */
 export default class Bcs {
   constructor () {
     /** @private */
-    this._bytes = []
+    this._writer = new BcsWriter({ size: INITIAL_SIZE, maxSize: MAX_SIZE })
   }
 
   /**
@@ -37,7 +43,7 @@ export default class Bcs {
    * @returns {Uint8Array} The BCS bytes.
    */
   toBytes () {
-    return new Uint8Array(this._bytes)
+    return this._writer.toBytes()
   }
 
   /**
@@ -52,7 +58,7 @@ export default class Bcs {
       throw new Error(`Value out of u8 range: ${value}.`)
     }
 
-    this._bytes.push(value)
+    this._writer.write8(value)
 
     return this
   }
@@ -65,16 +71,13 @@ export default class Bcs {
    * @throws {Error} If the value is negative or exceeds the u64 maximum (2^64 - 1).
    */
   u64 (value) {
-    let v = BigInt(value)
+    const v = BigInt(value)
 
     if (v < 0n || v > 0xffffffffffffffffn) {
       throw new Error(`Value out of u64 range: ${value}.`)
     }
 
-    for (let i = 0; i < 8; i++) {
-      this._bytes.push(Number(v & 0xffn))
-      v >>= 8n
-    }
+    this._writer.write64(v)
 
     return this
   }
@@ -86,14 +89,7 @@ export default class Bcs {
    * @returns {Bcs} This writer.
    */
   uleb128 (value) {
-    let v = value >>> 0
-
-    while (v >= 0x80) {
-      this._bytes.push((v & 0x7f) | 0x80)
-      v >>>= 7
-    }
-
-    this._bytes.push(v)
+    this._writer.writeULEB(value)
 
     return this
   }
@@ -105,9 +101,7 @@ export default class Bcs {
    * @returns {Bcs} This writer.
    */
   bytes (bytes) {
-    for (const b of bytes) {
-      this._bytes.push(b)
-    }
+    this._writer.writeBytes(bytes)
 
     return this
   }
@@ -143,10 +137,13 @@ export default class Bcs {
     }
 
     const hex = raw.padStart(64, '0')
+    const bytes = new Uint8Array(32)
 
-    for (let i = 0; i < 64; i += 2) {
-      this._bytes.push(parseInt(hex.slice(i, i + 2), 16))
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
     }
+
+    this.bytes(bytes)
 
     return this
   }

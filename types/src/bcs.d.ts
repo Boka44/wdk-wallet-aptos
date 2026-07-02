@@ -1,17 +1,16 @@
 /**
- * Minimal Binary Canonical Serialization (BCS) writer.
+ * Binary Canonical Serialization (BCS) writer for building an Aptos
+ * `RawTransaction` carrying an `EntryFunction` payload.
  *
- * Implements only the subset required to build an Aptos `RawTransaction`
- * carrying an `EntryFunction` payload. The full BCS spec is large; the WDK
- * module needs exactly the primitives below, so a hand-rolled writer avoids
- * pulling the Aptos SDK (and its non-Bare-compatible HTTP client) into the
- * runtime dependency tree.
+ * Thin wrapper over `@mysten/bcs`'s `BcsWriter`, exposing only the primitives
+ * this module needs and keeping the input validation (u8/u64/address ranges)
+ * the transaction encoders rely on.
  *
  * @see https://github.com/diem/bcs
  */
 export default class Bcs {
     /** @private */
-    private _bytes;
+    private _writer;
     /**
      * Returns the serialized bytes accumulated so far.
      *

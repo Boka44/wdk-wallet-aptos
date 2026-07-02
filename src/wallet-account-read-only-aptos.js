@@ -17,6 +17,8 @@
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
 import { ed25519 } from '@noble/curves/ed25519'
+// eslint-disable-next-line camelcase
+import { sha3_256 } from '@noble/hashes/sha3'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
 
 import AptosRpc from './aptos-rpc.js'
@@ -44,6 +46,23 @@ import {
  * @typedef {Object} AptosTransaction
  * @property {string} to - The recipient's address.
  * @property {number | bigint} value - The amount of APT to send (in octas, 1 APT = 100,000,000 octas).
+ */
+
+/**
+ * @typedef {Object} EntryFunctionPayload
+ * @property {string} function - The fully-qualified entry function (e.g. "0x1::aptos_account::transfer").
+ * @property {string[]} type_arguments - The type arguments.
+ * @property {Array<string>} arguments - The function arguments (addresses as hex, u64 amounts as decimal strings).
+ */
+
+/**
+ * A committed or pending transaction as returned by the fullnode REST API.
+ *
+ * @typedef {Object} AptosTransactionReceipt
+ * @property {string} type - The transaction state ("pending_transaction" or "user_transaction").
+ * @property {string} hash - The transaction hash.
+ * @property {boolean} [success] - Whether execution succeeded (present once committed).
+ * @property {string} [vm_status] - The VM status message (present once committed).
  */
 
 /**
@@ -83,6 +102,13 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
   constructor (address, config = {}, publicKey) {
     super(address)
 
+    // When a public key is supplied, ensure it matches the address (an Aptos
+    // address is a one-way hash of the public key). This catches a malformed
+    // (address, publicKey) pair early rather than at signature-verification time.
+    if (publicKey && deriveAddress(publicKey) !== normalizeAddress(address)) {
+      throw new Error('The public key does not match the account address.')
+    }
+
     /**
      * The read-only wallet account configuration.
      *
@@ -109,8 +135,11 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
      */
     this._rpc = undefined
 
+    // An empty provider array is truthy but has no endpoints, so guard against
+    // it explicitly rather than constructing a failover with nothing to fail over to.
     const provider = config.provider
-    if (provider) {
+    const hasProvider = Array.isArray(provider) ? provider.length > 0 : Boolean(provider)
+    if (hasProvider) {
       this._rpc = new AptosRpc(provider, { retries: config.retries ?? 3 })
     }
 
@@ -121,6 +150,15 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
      * @type {number | undefined}
      */
     this._chainId = config.chainId
+
+    /**
+     * The transaction expiration window, in seconds. Resolved once here rather
+     * than recomputed on every transaction.
+     *
+     * @private
+     * @type {number}
+     */
+    this._txnExpirationSecs = config.txnExpirationSecs ?? DEFAULT_TXN_EXPIRATION_SECS
   }
 
   /**
@@ -194,7 +232,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    *   `success` indicates whether it executed successfully and `vm_status` carries the reason.
    *
    * @param {string} hash - The transaction's hash.
-   * @returns {Promise<unknown | null>} The receipt, or null if the transaction is unknown to the node.
+   * @returns {Promise<AptosTransactionReceipt | null>} The receipt, or null if the transaction is unknown to the node.
    */
   async getTransactionReceipt (hash) {
     if (!this._rpc) {
@@ -365,9 +403,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    * @returns {number} The expiration timestamp.
    */
   _expirationTimestamp () {
-    const window = this._config.txnExpirationSecs ?? DEFAULT_TXN_EXPIRATION_SECS
-
-    return Math.floor(Date.now() / 1000) + window
+    return Math.floor(Date.now() / 1000) + this._txnExpirationSecs
   }
 
   /**
@@ -399,11 +435,13 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    * @throws {Error} If the simulation reports a failed execution (`success: false`).
    */
   async _simulate (payload) {
-    const publicKey = this._simulationPublicKey()
-
-    if (!publicKey) {
+    // Simulation needs the public key to derive the authentication key; an
+    // account built from an address alone cannot be simulated.
+    if (!this._publicKey) {
       throw new Error('A public key is required to simulate transactions. Use a full wallet account.')
     }
+
+    const publicKey = `0x${bytesToHex(this._publicKey)}`
 
     const address = await this.getAddress()
     const [sequenceNumber, gasUnitPrice] = await Promise.all([
@@ -427,26 +465,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
 
     return result
   }
-
-  /**
-   * Returns the account's public key (hex) for transaction simulation, or null
-   * when unknown. Simulation needs the public key to derive the authentication
-   * key; an account built from an address alone cannot be simulated.
-   *
-   * @protected
-   * @returns {string | null} The public key, or null.
-   */
-  _simulationPublicKey () {
-    return this._publicKey ? `0x${bytesToHex(this._publicKey)}` : null
-  }
 }
-
-/**
- * @typedef {Object} EntryFunctionPayload
- * @property {string} function - The fully-qualified entry function (e.g. "0x1::aptos_account::transfer").
- * @property {string[]} type_arguments - The type arguments.
- * @property {Array<string>} arguments - The function arguments (addresses as hex, u64 amounts as decimal strings).
- */
 
 /**
  * Normalizes an Aptos address to canonical 0x-prefixed 64-hex form, validating
@@ -468,6 +487,26 @@ export function normalizeAddress (address) {
   }
 
   return `0x${raw.padStart(64, '0')}`
+}
+
+// The single-signer Ed25519 authentication scheme identifier, appended to the
+// public key before hashing to derive the authentication key.
+const ED25519_SCHEME = 0x00
+
+/**
+ * Derives an Aptos account address from an Ed25519 public key:
+ * `sha3_256(publicKey ‖ 0x00)`, hex-encoded.
+ *
+ * @param {Uint8Array} publicKey - The 32-byte Ed25519 public key.
+ * @returns {string} The account address.
+ */
+export function deriveAddress (publicKey) {
+  const input = new Uint8Array(publicKey.length + 1)
+
+  input.set(publicKey, 0)
+  input[publicKey.length] = ED25519_SCHEME
+
+  return normalizeAddress(bytesToHex(sha3_256(input)))
 }
 
 /**

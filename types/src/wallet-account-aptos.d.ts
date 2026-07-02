@@ -7,17 +7,11 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
     /**
      * Creates a new aptos wallet account.
      *
-     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed.
-     * @param {string} path - The BIP-44 derivation path (e.g. "0'/0'/0'").
+     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed (mnemonic phrase or raw seed bytes).
+     * @param {string} path - The derivation path (e.g. "0'/0'/0'").
      * @param {AptosWalletConfig} [config] - The configuration object.
-     * @returns {Promise<WalletAccountAptos>} The wallet account.
      */
-    static at(seed: string | Uint8Array, path: string, config?: AptosWalletConfig): Promise<WalletAccountAptos>;
-    /**
-     * @private
-     * Use {@link WalletAccountAptos.at} instead.
-     */
-    private constructor();
+    constructor(seed: string | Uint8Array, path: string, config?: AptosWalletConfig);
     /** @private */
     private _path;
     /**
@@ -58,9 +52,9 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      * for tokens.
      *
      * @param {AptosTransaction} tx - The native APT transaction to sign.
-     * @returns {Promise<Object>} The signed transaction (JSON form, ready to submit).
+     * @returns {Promise<SignedTransaction>} The signed transaction (JSON form, ready to submit).
      */
-    signTransaction(tx: AptosTransaction): Promise<any>;
+    signTransaction(tx: AptosTransaction): Promise<SignedTransaction>;
     /**
      * Sends a transaction.
      *
@@ -91,10 +85,8 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
-     * @param {Object} gas - The gas parameters.
-     * @param {bigint} gas.maxGasAmount - The maximum gas units.
-     * @param {bigint} gas.gasUnitPrice - The gas unit price (in octas).
-     * @returns {Promise<Object>} The signed transaction (JSON form).
+     * @param {TransactionGasParams} gas - The gas parameters.
+     * @returns {Promise<SignedTransaction>} The signed transaction (JSON form).
      */
     private _signPayload;
     /**
@@ -105,7 +97,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
      * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
-     * @returns {Promise<{ signedTransaction: Object, fee: bigint }>} The signed transaction and its estimated fee.
+     * @returns {Promise<{ signedTransaction: SignedTransaction, fee: bigint }>} The signed transaction and its estimated fee.
      */
     private _buildSignedTransaction;
     /**
@@ -125,4 +117,53 @@ export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type AptosTransaction = import("./wallet-account-read-only-aptos.js").AptosTransaction;
 export type AptosWalletConfig = import("./wallet-account-read-only-aptos.js").AptosWalletConfig;
 export type EntryFunctionPayload = import("./wallet-account-read-only-aptos.js").EntryFunctionPayload;
+export type TransactionGasParams = {
+    /**
+     * - The maximum gas units.
+     */
+    maxGasAmount: bigint;
+    /**
+     * - The gas unit price (in octas).
+     */
+    gasUnitPrice: bigint;
+};
+/**
+ * A signed transaction in the JSON form accepted by the Aptos REST API.
+ */
+export type SignedTransaction = {
+    /**
+     * - The sender's address.
+     */
+    sender: string;
+    /**
+     * - The sender's sequence number.
+     */
+    sequence_number: string;
+    /**
+     * - The maximum gas units.
+     */
+    max_gas_amount: string;
+    /**
+     * - The gas unit price (in octas).
+     */
+    gas_unit_price: string;
+    /**
+     * - The expiration timestamp (in seconds).
+     */
+    expiration_timestamp_secs: string;
+    /**
+     * - The entry function payload.
+     */
+    payload: EntryFunctionPayload & {
+        type: string;
+    };
+    /**
+     * - The Ed25519 signature.
+     */
+    signature: {
+        type: string;
+        public_key: string;
+        signature: string;
+    };
+};
 import WalletAccountReadOnlyAptos from './wallet-account-read-only-aptos.js';
