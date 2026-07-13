@@ -39,20 +39,12 @@ import Bcs from './bcs.js'
  * @property {number} chainId - The chain id.
  */
 
-/**
- * The domain-separation prefix prepended to a serialized `RawTransaction`
- * before signing: `sha3_256("APTOS::RawTransaction")`. Precomputed as a
- * constant to avoid hashing the literal on every signature.
- *
- * @private
- */
+// The domain-separation prefix prepended to a serialized `RawTransaction`
+// before signing: `sha3_256("APTOS::RawTransaction")`. Precomputed as a
+// constant to avoid hashing the literal on every signature.
 const RAW_TRANSACTION_SALT = sha3_256(new TextEncoder().encode('APTOS::RawTransaction'))
 
-/**
- * BCS variant index for the `EntryFunction` transaction payload.
- *
- * @private
- */
+// BCS variant index for the `EntryFunction` transaction payload.
 const PAYLOAD_ENTRY_FUNCTION = 2
 
 /**

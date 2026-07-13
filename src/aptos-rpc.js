@@ -253,7 +253,7 @@ class SingleAptosRpc {
    * Performs a JSON POST request against the endpoint.
    *
    * @param {string} path - The path appended to the base url.
-   * @param {Object} body - The request body, serialized as JSON.
+   * @param {unknown} body - The request body, serialized as JSON.
    * @returns {Promise<unknown>} The parsed response.
    */
   async post (path, body) {
