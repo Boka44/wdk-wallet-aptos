@@ -10,6 +10,11 @@ import WalletAccountAptos from '../src/wallet-account-aptos.js'
 const SEED_PHRASE = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 const PUBLIC_KEY = 'a686f0309ab80312979606cfccc10ea2740147ae6888351488d11c46f08fbf60'
 
+// A known-good (message, signature) vector for PUBLIC_KEY, so verify() is tested
+// in isolation rather than against a signature this suite's own sign() produced.
+const KNOWN_MESSAGE = 'known message'
+const KNOWN_SIGNATURE = '91ed78ec33d7a6f07a780a8a94087ad451c4a47bdd873475608b224919165d5b98fd8f3563a6a455f1cc87929aa56e350da2f48035985354ec590e9656d25e03'
+
 const ADDRESS = '0xeb663b681209e7087d681c5d3eed12aaa8e1915e7c87794542c3f96e94b3d3bf'
 const RPC_URL = 'https://mock-aptos.test/v1'
 const USDT = '0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b'
@@ -109,30 +114,29 @@ describe('WalletAccountReadOnlyAptos', () => {
         .rejects.toThrow('public key is required')
     })
 
-    it('verifies a signature produced by the matching full account', async () => {
-      const full = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'")
-      const signature = await full.sign('hello world')
-
+    it('verifies a known-good signature', async () => {
       const readOnly = new WalletAccountReadOnlyAptos(ADDRESS, { provider: RPC_URL }, hexToBytes(PUBLIC_KEY))
 
-      expect(await readOnly.verify('hello world', signature)).toBe(true)
-      expect(await readOnly.verify('tampered', signature)).toBe(false)
+      expect(await readOnly.verify(KNOWN_MESSAGE, KNOWN_SIGNATURE)).toBe(true)
+    })
+
+    it('rejects a known-good signature against a tampered message', async () => {
+      const readOnly = new WalletAccountReadOnlyAptos(ADDRESS, { provider: RPC_URL }, hexToBytes(PUBLIC_KEY))
+
+      expect(await readOnly.verify('tampered', KNOWN_SIGNATURE)).toBe(false)
+    })
+
+    it('accepts a 0x-prefixed signature (the form signTransaction and the SDK emit)', async () => {
+      const readOnly = new WalletAccountReadOnlyAptos(ADDRESS, { provider: RPC_URL }, hexToBytes(PUBLIC_KEY))
+
+      expect(await readOnly.verify(KNOWN_MESSAGE, `0x${KNOWN_SIGNATURE}`)).toBe(true)
     })
 
     it('verifies via the account returned by toReadOnlyAccount()', async () => {
       const full = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'")
-      const signature = await full.sign('round trip')
       const readOnly = await full.toReadOnlyAccount()
 
-      expect(await readOnly.verify('round trip', signature)).toBe(true)
-    })
-
-    it('accepts a 0x-prefixed signature (the form signTransaction and the SDK emit)', async () => {
-      const full = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'")
-      const signature = await full.sign('prefixed')
-      const readOnly = new WalletAccountReadOnlyAptos(ADDRESS, { provider: RPC_URL }, hexToBytes(PUBLIC_KEY))
-
-      expect(await readOnly.verify('prefixed', `0x${signature}`)).toBe(true)
+      expect(await readOnly.verify(KNOWN_MESSAGE, KNOWN_SIGNATURE)).toBe(true)
     })
 
     it('returns false (does not throw) on malformed signatures', async () => {

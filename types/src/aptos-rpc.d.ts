@@ -39,6 +39,19 @@
  * @property {boolean} [raw] - When true, the unparsed response text is returned instead of parsed JSON (required for bare-integer endpoints such as balances).
  */
 /**
+ * @typedef {Object} SignedTransactionPayload
+ * @property {string} type - The payload type (e.g. "entry_function_payload").
+ * @property {string} function - The fully-qualified entry function.
+ * @property {string[]} type_arguments - The type arguments.
+ * @property {string[]} arguments - The function arguments.
+ */
+/**
+ * @typedef {Object} SignedTransactionSignature
+ * @property {string} type - The signature scheme (e.g. "ed25519_signature").
+ * @property {string} public_key - The signer's public key (hex).
+ * @property {string} signature - The signature (hex).
+ */
+/**
  * A signed transaction in the JSON form accepted by the Aptos REST API.
  *
  * @typedef {Object} SignedTransaction
@@ -47,8 +60,8 @@
  * @property {string} max_gas_amount - The maximum gas units.
  * @property {string} gas_unit_price - The gas unit price (in octas).
  * @property {string} expiration_timestamp_secs - The expiration timestamp (in seconds).
- * @property {Object} payload - The transaction payload.
- * @property {Object} signature - The signature.
+ * @property {SignedTransactionPayload} payload - The transaction payload.
+ * @property {SignedTransactionSignature} signature - The signature.
  */
 /**
  * A thin client over the Aptos fullnode REST API (`/v1`).
@@ -211,6 +224,38 @@ export type AptosGetOptions = {
      */
     raw?: boolean;
 };
+export type SignedTransactionPayload = {
+    /**
+     * - The payload type (e.g. "entry_function_payload").
+     */
+    type: string;
+    /**
+     * - The fully-qualified entry function.
+     */
+    function: string;
+    /**
+     * - The type arguments.
+     */
+    type_arguments: string[];
+    /**
+     * - The function arguments.
+     */
+    arguments: string[];
+};
+export type SignedTransactionSignature = {
+    /**
+     * - The signature scheme (e.g. "ed25519_signature").
+     */
+    type: string;
+    /**
+     * - The signer's public key (hex).
+     */
+    public_key: string;
+    /**
+     * - The signature (hex).
+     */
+    signature: string;
+};
 /**
  * A signed transaction in the JSON form accepted by the Aptos REST API.
  */
@@ -238,9 +283,9 @@ export type SignedTransaction = {
     /**
      * - The transaction payload.
      */
-    payload: any;
+    payload: SignedTransactionPayload;
     /**
      * - The signature.
      */
-    signature: any;
+    signature: SignedTransactionSignature;
 };

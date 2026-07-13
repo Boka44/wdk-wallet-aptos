@@ -162,6 +162,18 @@ describe('WalletAccountAptos', () => {
         .rejects.toThrow('Exceeded maximum fee')
     })
 
+    it('caps max_gas_amount so the worst-case fee cannot exceed transferMaxFee', async () => {
+      // Simulated fee = 100 * 100 = 10000, which passes the transferMaxFee guard (< 15000).
+      // The buffered max_gas_amount (100 * 2 = 200) would allow a worst-case fee of
+      // 200 * 100 = 20000, exceeding transferMaxFee. It must be capped to 15000 / 100 = 150.
+      account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transferMaxFee: 15000n })
+      mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' })
+
+      await account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n })
+
+      expect(submittedBody.max_gas_amount).toBe('150')
+    })
+
     it('submits a transfer with the correct payload, signature, and gas, and returns hash + fee', async () => {
       mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' })
 

@@ -63,6 +63,21 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  */
 
 /**
+ * @typedef {Object} SignedTransactionPayload
+ * @property {string} type - The payload type (e.g. "entry_function_payload").
+ * @property {string} function - The fully-qualified entry function.
+ * @property {string[]} type_arguments - The type arguments.
+ * @property {string[]} arguments - The function arguments.
+ */
+
+/**
+ * @typedef {Object} SignedTransactionSignature
+ * @property {string} type - The signature scheme (e.g. "ed25519_signature").
+ * @property {string} public_key - The signer's public key (hex).
+ * @property {string} signature - The signature (hex).
+ */
+
+/**
  * A signed transaction in the JSON form accepted by the Aptos REST API.
  *
  * @typedef {Object} SignedTransaction
@@ -71,8 +86,8 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {string} max_gas_amount - The maximum gas units.
  * @property {string} gas_unit_price - The gas unit price (in octas).
  * @property {string} expiration_timestamp_secs - The expiration timestamp (in seconds).
- * @property {Object} payload - The transaction payload.
- * @property {Object} signature - The signature.
+ * @property {SignedTransactionPayload} payload - The transaction payload.
+ * @property {SignedTransactionSignature} signature - The signature.
  */
 
 /**

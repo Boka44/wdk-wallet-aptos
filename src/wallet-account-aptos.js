@@ -27,6 +27,7 @@ import { sodium_memzero } from 'sodium-universal'
 import WalletAccountReadOnlyAptos, { deriveAddress } from './wallet-account-read-only-aptos.js'
 import { encodeRawTransaction, buildSigningMessage } from './transaction.js'
 
+/** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
@@ -53,6 +54,14 @@ import { encodeRawTransaction, buildSigningMessage } from './transaction.js'
  * @property {string} expiration_timestamp_secs - The expiration timestamp (in seconds).
  * @property {EntryFunctionPayload & { type: string }} payload - The entry function payload.
  * @property {{ type: string, public_key: string, signature: string }} signature - The Ed25519 signature.
+ */
+
+/**
+ * A signed transaction paired with its estimated fee.
+ *
+ * @typedef {Object} SignedTransactionResult
+ * @property {SignedTransaction} signedTransaction - The signed transaction, ready to submit.
+ * @property {bigint} fee - The estimated fee in octas.
  */
 
 // The SLIP-0044 coin-type prefix for Aptos. All path segments must be
@@ -109,7 +118,7 @@ function wipe (bytes) {
 /**
  * Full-featured Aptos wallet account implementation with signing capabilities.
  *
- * @implements {import('@tetherto/wdk-wallet').IWalletAccount}
+ * @implements {IWalletAccount}
  */
 export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
   /**
@@ -355,7 +364,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
    * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
-   * @returns {Promise<{ signedTransaction: SignedTransaction, fee: bigint }>} The signed transaction and its estimated fee.
+   * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
    */
   async _buildSignedTransaction (payload, maxFee) {
     const simulation = await this._simulate(payload)
@@ -367,7 +376,18 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 
-    const maxGasAmount = gasUsed > 0n ? gasUsed * MAX_GAS_BUFFER : DEFAULT_MAX_GAS_AMOUNT
+    let maxGasAmount = gasUsed > 0n ? gasUsed * MAX_GAS_BUFFER : DEFAULT_MAX_GAS_AMOUNT
+
+    // The buffered max_gas_amount could let the on-chain fee reach
+    // maxGasAmount * gasUnitPrice, which may exceed maxFee even though the
+    // simulated fee did not. When a maxFee is set, cap max_gas_amount so the
+    // worst-case fee cannot exceed it.
+    if (maxFee !== undefined && gasUnitPrice > 0n) {
+      const maxGasForFee = BigInt(maxFee) / gasUnitPrice
+      if (maxGasForFee < maxGasAmount) {
+        maxGasAmount = maxGasForFee
+      }
+    }
 
     const signedTransaction = await this._signPayload(payload, { maxGasAmount, gasUnitPrice })
 

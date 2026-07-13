@@ -46,7 +46,15 @@ describe('WalletManagerAptos', () => {
       const a0 = await wallet.getAccount(0)
       const a1 = await wallet.getAccount(1)
 
-      expect(await a0.getAddress()).not.toBe(await a1.getAddress())
+      const address0 = await a0.getAddress()
+      const address1 = await a1.getAddress()
+
+      // Assert both addresses are well-formed before comparing, so the test can't
+      // pass on two undefined (or otherwise malformed) values being unequal.
+      expect(address0).toMatch(/^0x[0-9a-f]{64}$/)
+      expect(address1).toMatch(/^0x[0-9a-f]{64}$/)
+      expect(address0).not.toBe(address1)
+      expect(a0.path).toBe("m/44'/637'/0'/0'/0'")
       expect(a1.path).toBe("m/44'/637'/1'/0'/0'")
     })
 
@@ -81,7 +89,7 @@ describe('WalletManagerAptos', () => {
     })
 
     it('throws on an invalid seed phrase', () => {
-      expect(() => new WalletManagerAptos('not a valid mnemonic')).toThrow()
+      expect(() => new WalletManagerAptos('not a valid mnemonic')).toThrow('The seed phrase is invalid.')
     })
   })
 
@@ -153,7 +161,7 @@ describe('WalletManagerAptos', () => {
       wallet.dispose()
 
       expect(a.keyPair.privateKey).toBeUndefined()
-      expect(key.every((byte) => byte === 0)).toBe(true)
+      expect(key).toEqual(new Uint8Array(32))
     })
   })
 })

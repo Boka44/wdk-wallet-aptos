@@ -36,9 +36,9 @@ export function toGasPrice(value: unknown): bigint | null;
 /**
  * Read-only Aptos wallet account implementation.
  *
- * @implements {import('@tetherto/wdk-wallet').IWalletAccountReadOnly}
+ * @implements {IWalletAccountReadOnly}
  */
-export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly implements import {
+export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly implements IWalletAccountReadOnly {
     /**
      * Creates a new aptos read-only wallet account.
      *
@@ -193,6 +193,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly im
      */
     protected _simulate(payload: EntryFunctionPayload): Promise<AptosSimulationResult>;
 }
+export type IWalletAccountReadOnly = import("@tetherto/wdk-wallet").IWalletAccountReadOnly;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
@@ -241,7 +242,7 @@ export type EntryFunctionPayload = {
     /**
      * - The function arguments (addresses as hex, u64 amounts as decimal strings).
      */
-    arguments: Array<string>;
+    arguments: string[];
 };
 /**
  * A committed or pending transaction as returned by the fullnode REST API.

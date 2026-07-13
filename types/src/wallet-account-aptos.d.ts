@@ -1,9 +1,9 @@
 /**
  * Full-featured Aptos wallet account implementation with signing capabilities.
  *
- * @implements {import('@tetherto/wdk-wallet').IWalletAccount}
+ * @implements {IWalletAccount}
  */
-export default class WalletAccountAptos extends WalletAccountReadOnlyAptos implements import {
+export default class WalletAccountAptos extends WalletAccountReadOnlyAptos implements IWalletAccount {
     /**
      * Creates a new aptos wallet account.
      *
@@ -97,7 +97,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
      * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
-     * @returns {Promise<{ signedTransaction: SignedTransaction, fee: bigint }>} The signed transaction and its estimated fee.
+     * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
      */
     private _buildSignedTransaction;
     /**
@@ -110,6 +110,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      */
     private _submit;
 }
+export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
@@ -165,5 +166,18 @@ export type SignedTransaction = {
         public_key: string;
         signature: string;
     };
+};
+/**
+ * A signed transaction paired with its estimated fee.
+ */
+export type SignedTransactionResult = {
+    /**
+     * - The signed transaction, ready to submit.
+     */
+    signedTransaction: SignedTransaction;
+    /**
+     * - The estimated fee in octas.
+     */
+    fee: bigint;
 };
 import WalletAccountReadOnlyAptos from './wallet-account-read-only-aptos.js';

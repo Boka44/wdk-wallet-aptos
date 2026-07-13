@@ -29,6 +29,7 @@ import {
   encodeU64Arg
 } from './transaction.js'
 
+/** @typedef {import('@tetherto/wdk-wallet').IWalletAccountReadOnly} IWalletAccountReadOnly */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
@@ -54,7 +55,7 @@ import {
  * @typedef {Object} EntryFunctionPayload
  * @property {string} function - The fully-qualified entry function (e.g. "0x1::aptos_account::transfer").
  * @property {string[]} type_arguments - The type arguments.
- * @property {Array<string>} arguments - The function arguments (addresses as hex, u64 amounts as decimal strings).
+ * @property {string[]} arguments - The function arguments (addresses as hex, u64 amounts as decimal strings).
  */
 
 /**
@@ -67,31 +68,19 @@ import {
  * @property {string} [vm_status] - The VM status message (present once committed).
  */
 
-/**
- * The fungible asset metadata address of native APT.
- *
- * @private
- */
+// The fungible asset metadata address of native APT.
 const APT_METADATA_ADDRESS = '0xa'
 
-/**
- * The default transaction expiration window, in seconds.
- *
- * @private
- */
+// The default transaction expiration window, in seconds.
 const DEFAULT_TXN_EXPIRATION_SECS = 60
 
-/**
- * The default maximum gas units used when simulating and submitting transactions.
- *
- * @private
- */
+// The default maximum gas units used when simulating and submitting transactions.
 const DEFAULT_MAX_GAS_AMOUNT = 100000n
 
 /**
  * Read-only Aptos wallet account implementation.
  *
- * @implements {import('@tetherto/wdk-wallet').IWalletAccountReadOnly}
+ * @implements {IWalletAccountReadOnly}
  */
 export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
   /**
@@ -488,7 +477,7 @@ export function normalizeAddress (address) {
     throw new Error(`Invalid Aptos address: ${address}.`)
   }
 
-  return `0x${raw.padStart(64, '0')}`
+  return `0x${raw.padStart(64, '0')}`.toLowerCase()
 }
 
 // The single-signer Ed25519 authentication scheme identifier, appended to the
