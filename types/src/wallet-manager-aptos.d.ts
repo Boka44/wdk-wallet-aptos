@@ -7,6 +7,14 @@ export default class WalletManagerAptos extends WalletManager {
      */
     constructor(seed: string | Uint8Array, config?: AptosWalletConfig);
     /**
+     * The aptos wallet configuration. Re-declared to narrow the inherited base
+     * `WalletConfig` to the Aptos-specific shape in the generated declarations.
+     *
+     * @protected
+     * @type {AptosWalletConfig}
+     */
+    protected _config: AptosWalletConfig;
+    /**
      * The Aptos REST client.
      *
      * @protected

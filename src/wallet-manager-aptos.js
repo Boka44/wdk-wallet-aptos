@@ -31,6 +31,15 @@ const FEE_RATE_FAST_MULTIPLIER = 150n
 
 export default class WalletManagerAptos extends WalletManager {
   /**
+   * The aptos wallet configuration. Re-declared to narrow the inherited base
+   * `WalletConfig` to the Aptos-specific shape in the generated declarations.
+   *
+   * @protected
+   * @type {AptosWalletConfig}
+   */
+  _config
+
+  /**
    * Creates a new wallet manager for the aptos blockchain.
    *
    * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed.
@@ -39,12 +48,6 @@ export default class WalletManagerAptos extends WalletManager {
   constructor (seed, config = {}) {
     super(seed, config)
 
-    /**
-     * The aptos wallet configuration.
-     *
-     * @protected
-     * @type {AptosWalletConfig}
-     */
     this._config = config
 
     /**
