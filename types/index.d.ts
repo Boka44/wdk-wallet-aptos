@@ -1,0 +1,10 @@
+export { default } from "./src/wallet-manager-aptos.js";
+export { default as WalletAccountReadOnlyAptos } from "./src/wallet-account-read-only-aptos.js";
+export { default as WalletAccountAptos } from "./src/wallet-account-aptos.js";
+export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
+export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
+export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
+export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
+export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type AptosTransaction = import("./src/wallet-account-read-only-aptos.js").AptosTransaction;
+export type AptosWalletConfig = import("./src/wallet-account-read-only-aptos.js").AptosWalletConfig;
