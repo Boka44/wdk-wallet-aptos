@@ -101,6 +101,18 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly im
      */
     getTransactionReceipt(hash: string): Promise<AptosTransactionReceipt | null>;
     /**
+     * Returns a normalized, finality-based receipt for a transaction.
+     *
+     * An Aptos transaction is `pending` while in the mempool and `final` once
+     * committed: consensus commits transactions irreversibly, so there is no
+     * intermediate `confirmed` state.
+     *
+     * @param {string} hash - The transaction's hash.
+     * @returns {Promise<AptosTransactionInfo>} The normalized receipt.
+     * @throws {NoSuchElementError} If no transaction has been found for the given hash.
+     */
+    getTransaction(hash: string): Promise<AptosTransactionInfo>;
+    /**
      * Describes a native APT transfer via `0x1::aptos_account::transfer`, which
      * auto-creates the recipient's account if it does not exist.
      *
@@ -198,6 +210,7 @@ export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type AptosSimulationResult = import("./aptos-rpc.js").AptosSimulationResult;
+export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
 export type AptosWalletConfig = {
     /**
      * - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover.
@@ -264,6 +277,24 @@ export type AptosTransactionReceipt = {
      * - The VM status message (present once committed).
      */
     vm_status?: string;
+    /**
+     * - The ledger version the transaction was committed at (present once committed).
+     */
+    version?: string;
+    /**
+     * - The gas units consumed (present once committed).
+     */
+    gas_used?: string;
+    /**
+     * - The gas unit price in octas (present once committed).
+     */
+    gas_unit_price?: string;
+};
+/**
+ * A normalized Aptos transaction receipt, extended with the raw fullnode transaction object.
+ */
+export type AptosTransactionInfo = TransactionReceipt & {
+    transaction: AptosTransactionReceipt;
 };
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';
 import AptosRpc from './aptos-rpc.js';
