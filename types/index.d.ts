@@ -8,3 +8,4 @@ export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type AptosTransaction = import("./src/wallet-account-read-only-aptos.js").AptosTransaction;
 export type AptosWalletConfig = import("./src/wallet-account-read-only-aptos.js").AptosWalletConfig;
+export type AptosTransactionInfo = import("./src/wallet-account-read-only-aptos.js").AptosTransactionInfo;
