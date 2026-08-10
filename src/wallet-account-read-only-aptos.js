@@ -267,7 +267,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
       throw new NoSuchElementError(`No transaction found for hash '${hash}'.`)
     }
 
-    const committed = transaction.type === 'user_transaction'
+    const committed = transaction.type !== 'pending_transaction'
 
     return {
       hash,
