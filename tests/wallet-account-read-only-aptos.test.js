@@ -4,6 +4,8 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 import { hexToBytes } from '@noble/hashes/utils'
 
+import { NoSuchElementError } from '@tetherto/wdk-wallet'
+
 import WalletAccountReadOnlyAptos, { normalizeAddress } from '../src/wallet-account-read-only-aptos.js'
 import WalletAccountAptos from '../src/wallet-account-aptos.js'
 
@@ -105,6 +107,57 @@ describe('WalletAccountReadOnlyAptos', () => {
       mockFetchOnce(404, { message: 'not found' })
 
       expect(await account.getTransactionReceipt('0xabc')).toBeNull()
+    })
+  })
+
+  describe('getTransaction', () => {
+    it('normalizes a committed successful transaction as final', async () => {
+      const raw = { type: 'user_transaction', hash: '0xabc', success: true, version: '123', gas_used: '7', gas_unit_price: '100' }
+      mockFetchOnce(200, raw)
+
+      expect(await account.getTransaction('0xabc')).toEqual({
+        hash: '0xabc',
+        finality: 'final',
+        success: true,
+        block: 123,
+        fee: 700n,
+        transaction: raw
+      })
+    })
+
+    it('normalizes a committed reverted transaction as final with success false', async () => {
+      const raw = { type: 'user_transaction', hash: '0xabc', success: false, vm_status: 'OUT_OF_GAS', version: '123', gas_used: '7', gas_unit_price: '100' }
+      mockFetchOnce(200, raw)
+
+      const receipt = await account.getTransaction('0xabc')
+      expect(receipt.finality).toBe('final')
+      expect(receipt.success).toBe(false)
+    })
+
+    it('normalizes a mempool transaction as pending with no success', async () => {
+      const raw = { type: 'pending_transaction', hash: '0xabc' }
+      mockFetchOnce(200, raw)
+
+      expect(await account.getTransaction('0xabc')).toEqual({
+        hash: '0xabc',
+        finality: 'pending',
+        success: undefined,
+        block: undefined,
+        fee: undefined,
+        transaction: raw
+      })
+    })
+
+    it('throws NoSuchElementError when the transaction is not found', async () => {
+      mockFetchOnce(404, { message: 'not found' })
+
+      await expect(account.getTransaction('0xabc')).rejects.toThrow(NoSuchElementError)
+    })
+
+    it('throws when not connected to a provider', async () => {
+      const offline = new WalletAccountReadOnlyAptos(ADDRESS)
+
+      await expect(offline.getTransaction('0xabc')).rejects.toThrow('must be connected to a provider')
     })
   })
 

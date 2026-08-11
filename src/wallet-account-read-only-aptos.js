@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
+import { WalletAccountReadOnly, NoSuchElementError } from '@tetherto/wdk-wallet'
 
 import { ed25519 } from '@noble/curves/ed25519'
 // eslint-disable-next-line camelcase
@@ -33,6 +33,7 @@ import {
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+/** @typedef {import('@tetherto/wdk-wallet').TransactionReceipt} TransactionReceipt */
 
 /** @typedef {import('./aptos-rpc.js').AptosSimulationResult} AptosSimulationResult */
 
@@ -66,6 +67,17 @@ import {
  * @property {string} hash - The transaction hash.
  * @property {boolean} [success] - Whether execution succeeded (present once committed).
  * @property {string} [vm_status] - The VM status message (present once committed).
+ * @property {string} [version] - The ledger version the transaction was committed at (present once committed).
+ * @property {string} [gas_used] - The gas units consumed (present once committed).
+ * @property {string} [gas_unit_price] - The gas unit price in octas (present once committed).
+ */
+
+/**
+ * A normalized Aptos transaction receipt, extended with the raw fullnode transaction object.
+ *
+ * @typedef {TransactionReceipt & {
+ *   transaction: AptosTransactionReceipt
+ * }} AptosTransactionInfo
  */
 
 // The fungible asset metadata address of native APT.
@@ -231,6 +243,42 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
     }
 
     return this._rpc.getTransactionByHash(hash)
+  }
+
+  /**
+   * Returns a normalized, finality-based receipt for a transaction.
+   *
+   * An Aptos transaction is `pending` while in the mempool and `final` once
+   * committed: consensus commits transactions irreversibly, so there is no
+   * intermediate `confirmed` state.
+   *
+   * @param {string} hash - The transaction's hash.
+   * @returns {Promise<AptosTransactionInfo>} The normalized receipt.
+   * @throws {NoSuchElementError} If no transaction has been found for the given hash.
+   */
+  async getTransaction (hash) {
+    if (!this._rpc) {
+      throw new Error('The wallet must be connected to a provider to fetch transactions.')
+    }
+
+    const transaction = await this._rpc.getTransactionByHash(hash)
+
+    if (!transaction) {
+      throw new NoSuchElementError(`No transaction found for hash '${hash}'.`)
+    }
+
+    const committed = transaction.type !== 'pending_transaction'
+
+    return {
+      hash,
+      finality: committed ? 'final' : 'pending',
+      success: committed ? transaction.success : undefined,
+      block: committed && transaction.version != null ? Number(transaction.version) : undefined,
+      fee: committed && transaction.gas_used != null && transaction.gas_unit_price != null
+        ? BigInt(transaction.gas_used) * BigInt(transaction.gas_unit_price)
+        : undefined,
+      transaction
+    }
   }
 
   /**
