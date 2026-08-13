@@ -108,10 +108,20 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly im
      * intermediate `confirmed` state.
      *
      * @param {string} hash - The transaction's hash.
-     * @returns {Promise<AptosTransactionInfo>} The normalized receipt.
+     * @returns {Promise<TransactionReceipt & AptosTransactionDetails>} The normalized receipt.
+     * @throws {ValueError} If the hash is not a valid transaction hash.
      * @throws {NoSuchElementError} If no transaction has been found for the given hash.
      */
-    getTransaction(hash: string): Promise<AptosTransactionInfo>;
+    getTransaction(hash: string): Promise<TransactionReceipt & AptosTransactionDetails>;
+    /**
+     * Blocks until a transaction reaches a terminal state (the requested finality target or `dropped`), or times out.
+     *
+     * @param {string} hash - The transaction's hash.
+     * @param {WaitForTransactionOptions} [options] - The wait options.
+     * @returns {Promise<TransactionReceipt & AptosTransactionDetails>} The terminal receipt: the finality target reached (inspect `success` to tell success from revert), or `dropped`.
+     * @throws {TimeoutError} If the target is not reached before the timeout.
+     */
+    waitForTransaction(hash: string, options?: WaitForTransactionOptions): Promise<TransactionReceipt & AptosTransactionDetails>;
     /**
      * Describes a native APT transfer via `0x1::aptos_account::transfer`, which
      * auto-creates the recipient's account if it does not exist.
@@ -210,6 +220,7 @@ export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type AptosSimulationResult = import("./aptos-rpc.js").AptosSimulationResult;
+export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTransactionOptions;
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
 export type AptosWalletConfig = {
     /**
@@ -291,9 +302,12 @@ export type AptosTransactionReceipt = {
     gas_unit_price?: string;
 };
 /**
- * A normalized Aptos transaction receipt, extended with the raw fullnode transaction object.
+ * The Aptos-specific fields added to a normalized transaction receipt.
  */
-export type AptosTransactionInfo = TransactionReceipt & {
+export type AptosTransactionDetails = {
+    /**
+     * - The raw fullnode transaction object.
+     */
     transaction: AptosTransactionReceipt;
 };
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';

@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 import { hexToBytes } from '@noble/hashes/utils'
 
-import { NoSuchElementError } from '@tetherto/wdk-wallet'
+import { NoSuchElementError, ValueError } from '@tetherto/wdk-wallet'
 
 import WalletAccountReadOnlyAptos, { normalizeAddress } from '../src/wallet-account-read-only-aptos.js'
 import WalletAccountAptos from '../src/wallet-account-aptos.js'
@@ -21,6 +21,7 @@ const ADDRESS = '0xeb663b681209e7087d681c5d3eed12aaa8e1915e7c87794542c3f96e94b3d
 const RPC_URL = 'https://mock-aptos.test/v1'
 const USDT = '0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b'
 const RECIPIENT = '0x1111111111111111111111111111111111111111111111111111111111111111'
+const TX_HASH = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
 
 function mockFetchOnce (status, body) {
   globalThis.fetch.mockResolvedValueOnce({
@@ -112,11 +113,11 @@ describe('WalletAccountReadOnlyAptos', () => {
 
   describe('getTransaction', () => {
     it('normalizes a committed successful transaction as final', async () => {
-      const raw = { type: 'user_transaction', hash: '0xabc', success: true, version: '123', gas_used: '7', gas_unit_price: '100' }
+      const raw = { type: 'user_transaction', hash: TX_HASH, success: true, version: '123', gas_used: '7', gas_unit_price: '100' }
       mockFetchOnce(200, raw)
 
-      expect(await account.getTransaction('0xabc')).toEqual({
-        hash: '0xabc',
+      expect(await account.getTransaction(TX_HASH)).toEqual({
+        hash: TX_HASH,
         finality: 'final',
         success: true,
         block: 123,
@@ -126,20 +127,20 @@ describe('WalletAccountReadOnlyAptos', () => {
     })
 
     it('normalizes a committed reverted transaction as final with success false', async () => {
-      const raw = { type: 'user_transaction', hash: '0xabc', success: false, vm_status: 'OUT_OF_GAS', version: '123', gas_used: '7', gas_unit_price: '100' }
+      const raw = { type: 'user_transaction', hash: TX_HASH, success: false, vm_status: 'OUT_OF_GAS', version: '123', gas_used: '7', gas_unit_price: '100' }
       mockFetchOnce(200, raw)
 
-      const receipt = await account.getTransaction('0xabc')
+      const receipt = await account.getTransaction(TX_HASH)
       expect(receipt.finality).toBe('final')
       expect(receipt.success).toBe(false)
     })
 
     it('normalizes a mempool transaction as pending with no success', async () => {
-      const raw = { type: 'pending_transaction', hash: '0xabc' }
+      const raw = { type: 'pending_transaction', hash: TX_HASH }
       mockFetchOnce(200, raw)
 
-      expect(await account.getTransaction('0xabc')).toEqual({
-        hash: '0xabc',
+      expect(await account.getTransaction(TX_HASH)).toEqual({
+        hash: TX_HASH,
         finality: 'pending',
         success: undefined,
         block: undefined,
@@ -151,13 +152,19 @@ describe('WalletAccountReadOnlyAptos', () => {
     it('throws NoSuchElementError when the transaction is not found', async () => {
       mockFetchOnce(404, { message: 'not found' })
 
-      await expect(account.getTransaction('0xabc')).rejects.toThrow(NoSuchElementError)
+      await expect(account.getTransaction(TX_HASH)).rejects.toThrow(NoSuchElementError)
+    })
+
+    it('throws ValueError on a malformed transaction hash', async () => {
+      for (const bad of ['0xabc', 'not-a-hash', '', TX_HASH + '00', TX_HASH.slice(0, -1)]) {
+        await expect(account.getTransaction(bad)).rejects.toThrow(ValueError)
+      }
     })
 
     it('throws when not connected to a provider', async () => {
       const offline = new WalletAccountReadOnlyAptos(ADDRESS)
 
-      await expect(offline.getTransaction('0xabc')).rejects.toThrow('must be connected to a provider')
+      await expect(offline.getTransaction(TX_HASH)).rejects.toThrow('must be connected to a provider')
     })
   })
 
