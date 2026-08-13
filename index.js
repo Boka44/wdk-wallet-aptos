@@ -26,7 +26,7 @@
 
 /** @typedef {import('./src/wallet-account-read-only-aptos.js').AptosTransaction} AptosTransaction */
 /** @typedef {import('./src/wallet-account-read-only-aptos.js').AptosWalletConfig} AptosWalletConfig */
-/** @typedef {import('./src/wallet-account-read-only-aptos.js').AptosTransactionDetails} AptosTransactionDetails */
+/** @typedef {import('./src/wallet-account-read-only-aptos.js').AptosTransactionInfo} AptosTransactionInfo */
 
 export { default } from './src/wallet-manager-aptos.js'
 

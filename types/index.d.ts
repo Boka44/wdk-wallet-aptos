@@ -12,4 +12,4 @@ export type WaitForTransactionTarget = import("@tetherto/wdk-wallet").WaitForTra
 export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTransactionOptions;
 export type AptosTransaction = import("./src/wallet-account-read-only-aptos.js").AptosTransaction;
 export type AptosWalletConfig = import("./src/wallet-account-read-only-aptos.js").AptosWalletConfig;
-export type AptosTransactionDetails = import("./src/wallet-account-read-only-aptos.js").AptosTransactionDetails;
+export type AptosTransactionInfo = import("./src/wallet-account-read-only-aptos.js").AptosTransactionInfo;

@@ -74,10 +74,11 @@ import {
  */
 
 /**
- * The Aptos-specific fields added to a normalized transaction receipt.
+ * A normalized Aptos transaction receipt, extended with the raw fullnode transaction object.
  *
- * @typedef {Object} AptosTransactionDetails
- * @property {AptosTransactionReceipt} transaction - The raw fullnode transaction object.
+ * @typedef {TransactionReceipt & {
+ *   transaction: AptosTransactionReceipt
+ * }} AptosTransactionInfo
  */
 
 // The fungible asset metadata address of native APT.
@@ -256,7 +257,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    * intermediate `confirmed` state.
    *
    * @param {string} hash - The transaction's hash.
-   * @returns {Promise<TransactionReceipt & AptosTransactionDetails>} The normalized receipt.
+   * @returns {Promise<AptosTransactionInfo>} The normalized receipt.
    * @throws {ValueError} If the hash is not a valid transaction hash.
    * @throws {NoSuchElementError} If no transaction has been found for the given hash.
    */
@@ -294,7 +295,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    *
    * @param {string} hash - The transaction's hash.
    * @param {WaitForTransactionOptions} [options] - The wait options.
-   * @returns {Promise<TransactionReceipt & AptosTransactionDetails>} The terminal receipt: the finality target reached (inspect `success` to tell success from revert), or `dropped`.
+   * @returns {Promise<AptosTransactionInfo>} The terminal receipt: the finality target reached (inspect `success` to tell success from revert), or `dropped`.
    * @throws {TimeoutError} If the target is not reached before the timeout.
    */
   async waitForTransaction (hash, options = {}) {
