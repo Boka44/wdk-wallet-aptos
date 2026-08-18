@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { WalletAccountReadOnly, NoSuchElementError } from '@tetherto/wdk-wallet'
+import { WalletAccountReadOnly, NoSuchElementError, ValueError } from '@tetherto/wdk-wallet'
 
 import { ed25519 } from '@noble/curves/ed25519'
 // eslint-disable-next-line camelcase
@@ -34,6 +34,7 @@ import {
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionReceipt} TransactionReceipt */
+/** @typedef {import('@tetherto/wdk-wallet').WaitForTransactionOptions} WaitForTransactionOptions */
 
 /** @typedef {import('./aptos-rpc.js').AptosSimulationResult} AptosSimulationResult */
 
@@ -82,6 +83,9 @@ import {
 
 // The fungible asset metadata address of native APT.
 const APT_METADATA_ADDRESS = '0xa'
+
+// An Aptos transaction hash is a 0x-prefixed 32-byte (64 hex character) string.
+const TRANSACTION_HASH_REGEX = /^0x[0-9a-fA-F]{64}$/
 
 // The default transaction expiration window, in seconds.
 const DEFAULT_TXN_EXPIRATION_SECS = 60
@@ -254,6 +258,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
    *
    * @param {string} hash - The transaction's hash.
    * @returns {Promise<AptosTransactionInfo>} The normalized receipt.
+   * @throws {ValueError} If the hash is not a valid transaction hash.
    * @throws {NoSuchElementError} If no transaction has been found for the given hash.
    */
   async getTransaction (hash) {
@@ -261,16 +266,22 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
       throw new Error('The wallet must be connected to a provider to fetch transactions.')
     }
 
-    const transaction = await this._rpc.getTransactionByHash(hash)
+    if (typeof hash !== 'string' || !TRANSACTION_HASH_REGEX.test(hash.trim())) {
+      throw new ValueError(`Invalid transaction hash: '${hash}'.`)
+    }
+
+    const normalizedHash = hash.trim()
+
+    const transaction = await this._rpc.getTransactionByHash(normalizedHash)
 
     if (!transaction) {
-      throw new NoSuchElementError(`No transaction found for hash '${hash}'.`)
+      throw new NoSuchElementError(`No transaction found for hash '${normalizedHash}'.`)
     }
 
     const committed = transaction.type !== 'pending_transaction'
 
     return {
-      hash,
+      hash: normalizedHash,
       finality: committed ? 'final' : 'pending',
       success: committed ? transaction.success : undefined,
       block: committed && transaction.version != null ? Number(transaction.version) : undefined,
@@ -279,6 +290,18 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
         : undefined,
       transaction
     }
+  }
+
+  /**
+   * Blocks until a transaction reaches a terminal state (the requested finality target or `dropped`), or times out.
+   *
+   * @param {string} hash - The transaction's hash.
+   * @param {WaitForTransactionOptions} [options] - The wait options.
+   * @returns {Promise<AptosTransactionInfo>} The terminal receipt: the finality target reached (inspect `success` to tell success from revert), or `dropped`.
+   * @throws {TimeoutError} If the target is not reached before the timeout.
+   */
+  async waitForTransaction (hash, options = {}) {
+    return await super.waitForTransaction(hash, options)
   }
 
   /**

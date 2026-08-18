@@ -89,7 +89,7 @@ describe('WalletManagerAptos', () => {
     })
 
     it('throws on an invalid seed phrase', () => {
-      expect(() => new WalletManagerAptos('not a valid mnemonic')).toThrow('The seed phrase is invalid.')
+      expect(() => new WalletManagerAptos('not a valid mnemonic')).toThrow('Invalid seed phrase.')
     })
   })
 
