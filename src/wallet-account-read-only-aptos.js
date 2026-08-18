@@ -270,16 +270,18 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
       throw new ValueError(`Invalid transaction hash: '${hash}'.`)
     }
 
-    const transaction = await this._rpc.getTransactionByHash(hash)
+    const normalizedHash = hash.trim()
+
+    const transaction = await this._rpc.getTransactionByHash(normalizedHash)
 
     if (!transaction) {
-      throw new NoSuchElementError(`No transaction found for hash '${hash}'.`)
+      throw new NoSuchElementError(`No transaction found for hash '${normalizedHash}'.`)
     }
 
     const committed = transaction.type !== 'pending_transaction'
 
     return {
-      hash,
+      hash: normalizedHash,
       finality: committed ? 'final' : 'pending',
       success: committed ? transaction.success : undefined,
       block: committed && transaction.version != null ? Number(transaction.version) : undefined,
