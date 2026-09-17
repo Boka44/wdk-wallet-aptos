@@ -224,9 +224,9 @@ export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTr
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
 export type AptosWalletConfig = {
     /**
-     * - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover.
+     * - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"), or an already-built `AptosRpc` client. An array of urls enables failover. An already-built client is reused as-is, which lets a manager share a single client across all the accounts it creates.
      */
-    provider?: string | string[];
+    provider?: string | string[] | AptosRpc;
     /**
      * - The chain id (mainnet: 1, testnet: 2). Fetched from the ledger info on first use if omitted.
      */
