@@ -40,6 +40,15 @@ export function toGasPrice(value: unknown): bigint | null;
  */
 export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly implements IWalletAccountReadOnly {
     /**
+     * Builds the Aptos REST client from the wallet configuration: a url (or list of urls, for
+     * failover), or an already-built `AptosRpc` reused as-is.
+     *
+     * @protected
+     * @param {AptosWalletConfig} [config] - The configuration object.
+     * @returns {AptosRpc | undefined} The rpc client, or undefined if none is configured.
+     */
+    protected static _buildRpc(config?: AptosWalletConfig): AptosRpc | undefined;
+    /**
      * Creates a new aptos read-only wallet account.
      *
      * @param {string} address - The account's address.
