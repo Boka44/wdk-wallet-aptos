@@ -40,7 +40,7 @@ import {
 
 /**
  * @typedef {Object} AptosWalletConfig
- * @property {string | string[] | AptosRpc} [provider] - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"), or an already-built `AptosRpc` client. An array of urls enables failover. An already-built client is reused as-is, which lets a manager share a single client across all the accounts it creates.
+ * @property {string | AptosRpc | Array<string>} [provider] - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"), or an already-built `AptosRpc` client. An array of urls enables failover. An already-built client is reused as-is, which lets a manager share a single client across all the accounts it creates.
  * @property {number} [chainId] - The chain id (mainnet: 1, testnet: 2). Fetched from the ledger info on first use if omitted.
  * @property {number} [retries] - The number of failover retry attempts if 'provider' is a list of urls (default: 3).
  * @property {number} [txnExpirationSecs] - The transaction expiration window in seconds from now (default: 60).
