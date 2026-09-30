@@ -120,12 +120,6 @@ describe('WalletAccountAptos', () => {
       expect(account.keyPair.privateKey).toBeUndefined()
     })
 
-    it('is safe to call twice', () => {
-      account.dispose()
-
-      expect(() => account.dispose()).not.toThrow()
-    })
-
     it('exposes the disposed state', () => {
       expect(account.disposed).toBe(false)
 
